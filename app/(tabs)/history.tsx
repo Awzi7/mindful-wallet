@@ -48,6 +48,7 @@ export default function HistoryScreen() {
   const textColor = useThemeColor({}, 'text');
   const accent = useThemeColor({}, 'accent');
   const accentSoft = useThemeColor({}, 'accentSoft');
+  const positive = useThemeColor({}, 'positive');
 
   const loadTransactions = useCallback(() => {
     getTransactions().then(setTransactions);
@@ -192,7 +193,7 @@ export default function HistoryScreen() {
           <Text style={[styles.monthTotal, { color: subtle, marginTop: -10 }]}>
             {t('history.monthIncome', { amount: formatMoney(monthIncome, currency) })}
             {'  ·  '}
-            <Text style={{ color: monthNet >= 0 ? tint : accent, fontWeight: '700' }}>
+            <Text style={{ color: monthNet >= 0 ? positive : accent, fontWeight: '700' }}>
               {t('history.monthNet', { amount: formatMoney(monthNet, currency) })}
             </Text>
           </Text>
@@ -231,7 +232,7 @@ export default function HistoryScreen() {
         <Text style={[styles.hint, { color: subtle }]}>{t('history.selectDayHint')}</Text>
       </Card>
 
-      <Card>
+      <Card variant="quiet">
         <View style={[styles.searchBox, { borderColor: border }]}>
           <Ionicons name="search" size={16} color={subtle} />
           <TextInput
@@ -332,7 +333,7 @@ export default function HistoryScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Text style={[styles.txAmount, isIncome(tx) && { color: tint }]}>
+                <Text style={[styles.txAmount, isIncome(tx) && { color: positive }]}>
                   {isIncome(tx) ? '+' : ''}
                   {formatMoney(tx.amount, currency)}
                 </Text>

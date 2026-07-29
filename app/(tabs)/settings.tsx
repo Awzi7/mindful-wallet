@@ -537,8 +537,22 @@ export default function SettingsScreen() {
       )}
 
       <Text style={[styles.groupTitle, { color: subtle }]}>{t('settings.privacy')}</Text>
-      <Card>
-        <Text style={[styles.hint, { color: subtle }]}>{t('settings.privacyText')}</Text>
+      <Card variant="quiet">
+        {(
+          [
+            { icon: 'phone-portrait-outline', key: 'Device' },
+            { icon: 'sparkles-outline', key: 'Ai' },
+            { icon: 'lock-closed-outline', key: 'Key' },
+          ] as const
+        ).map((point, i) => (
+          <View key={point.key} style={[styles.privacyRow, i > 0 && { marginTop: 14 }]}>
+            <Ionicons name={point.icon} size={17} color={tint} style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.privacyRowTitle}>{t(`settings.privacyPoint${point.key}Title`)}</Text>
+              <Text style={[styles.hint, { color: subtle, marginTop: 2 }]}>{t(`settings.privacyPoint${point.key}Body`)}</Text>
+            </View>
+          </View>
+        ))}
         <View style={styles.legalLinks}>
           <Pressable onPress={() => openLegalUrl(PRIVACY_POLICY_URL)} hitSlop={6} accessibilityRole="link">
             <Text style={[styles.legalLinkText, { color: tint }]}>{t('premium.privacyLink')}</Text>
@@ -615,12 +629,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 12,
   },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  privacyRowTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
   legalLinks: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
-    marginTop: 12,
+    marginTop: 16,
   },
   legalLinkText: {
     fontSize: 13,

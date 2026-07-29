@@ -65,6 +65,7 @@ export default function AddExpenseScreen() {
   const textColor = useThemeColor({}, 'text');
   const accent = useThemeColor({}, 'accent');
   const accentSoft = useThemeColor({}, 'accentSoft');
+  const positive = useThemeColor({}, 'positive');
 
   const refreshRecent = useCallback(() => {
     getTransactions().then((list) => setRecentTxs(list.slice(0, 3)));
@@ -406,7 +407,7 @@ export default function AddExpenseScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Text style={[styles.txAmount, isIncome(tx) && { color: tint }]}>
+                <Text style={[styles.txAmount, isIncome(tx) && { color: positive }]}>
                   {isIncome(tx) ? '+' : ''}
                   {formatMoney(tx.amount, currency)}
                 </Text>

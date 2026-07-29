@@ -143,8 +143,12 @@ export default {
     appLockHint: 'Require Face ID / Touch ID when opening the app.',
     appLockUnavailable: "Face ID / Touch ID isn't set up on this device.",
     privacy: 'Privacy & data',
-    privacyText:
-      "• Expenses, goals, and settings are stored only on this device — we don't have our own server and never see them.\n\n• When you use the AI coach, the request text and a summary of your spending/budget/goal are sent to your chosen provider — that's what makes the advice personal. From there, that provider's own privacy policy applies.\n\n• Your API key is sent only directly to your chosen provider's server and is kept in the device's encrypted secure storage.",
+    privacyPointDeviceTitle: 'Everything stays on your device',
+    privacyPointDeviceBody: "We have no server of our own — we never see your expenses, goals, or settings.",
+    privacyPointAiTitle: 'The AI coach gets a summary',
+    privacyPointAiBody: "Your question plus a summary of spending, budget, and goal goes to your chosen provider — that's what makes the advice personal. From there its own policy applies.",
+    privacyPointKeyTitle: 'Your key is encrypted',
+    privacyPointKeyBody: "The API key is sent only directly to your provider and is kept in the device's encrypted secure storage.",
     dataBackup: 'Backup & restore',
     dataBackupHint:
       'Save all your data (expenses, goals, settings) to a single file, or restore it from a file you saved earlier. The file stays with you — we never see it.',
