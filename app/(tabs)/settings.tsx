@@ -294,7 +294,7 @@ export default function SettingsScreen() {
 
       <Card style={activeProvider === LOCAL_COACH_ID ? { borderColor: tint, borderWidth: 1.5 } : undefined}>
         <View style={styles.providerHeader}>
-          <Text style={styles.sectionTitle}>{t('settings.providersLocalLabel')}</Text>
+          <Text style={[styles.sectionTitle, { flex: 1 }]}>{t('settings.providersLocalLabel')}</Text>
           {activeProvider === LOCAL_COACH_ID ? (
             <View style={[styles.activeBadge, { backgroundColor: accentSoft }]}>
               <Text style={[styles.activeBadgeText, { color: accent }]}>{t('settings.active')}</Text>
@@ -322,7 +322,7 @@ export default function SettingsScreen() {
                 onPress={() => setExpandedProvider(isExpanded ? null : provider)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: isExpanded }}>
-                <Text style={styles.sectionTitle}>{t(meta.labelKey)}</Text>
+                <Text style={[styles.sectionTitle, { flexShrink: 1 }]}>{t(meta.labelKey)}</Text>
                 <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={subtle} />
               </Pressable>
               {isActive ? (
@@ -364,7 +364,7 @@ export default function SettingsScreen() {
                   autoCorrect={false}
                 />
                 <View style={styles.providerFooter}>
-                  <Text style={[styles.smallText, { color: subtle }]}>{t('settings.keyHint', { url: meta.helpUrl })}</Text>
+                  <Text style={[styles.smallText, { color: subtle, flex: 1 }]}>{t('settings.keyHint', { url: meta.helpUrl })}</Text>
                   <Pressable
                     style={[styles.testButton, { backgroundColor: accentSoft }]}
                     onPress={() => handleTest(provider)}
@@ -617,6 +617,7 @@ const styles = StyleSheet.create({
   },
   legalLinks: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
     marginTop: 12,
@@ -641,6 +642,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   appLockRow: {
     flexDirection: 'row',
@@ -660,6 +662,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    flexShrink: 0,
   },
   activeBadgeText: {
     fontSize: 11,
@@ -669,6 +672,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
   },
   hint: {
     fontSize: 12,
@@ -696,6 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginTop: 10,
   },
   smallText: {
@@ -712,6 +717,7 @@ const styles = StyleSheet.create({
   },
   editRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   smallButton: {

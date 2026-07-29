@@ -188,7 +188,7 @@ export default function GoalsScreen() {
                   <View style={styles.rowBetween}>
                     <View style={styles.heroTitleRow}>
                       <Ionicons name="flag-outline" size={17} color="white" style={{ marginRight: 8 }} />
-                      <Text style={styles.heroCardTitle}>{g.name}</Text>
+                      <Text style={[styles.heroCardTitle, { flexShrink: 1 }]}>{g.name}</Text>
                     </View>
                     <Pressable onPress={() => startEdit(g)}>
                       <Text style={styles.editLink}>{t('goals.changeLink')}</Text>
@@ -215,7 +215,7 @@ export default function GoalsScreen() {
             return (
               <Card key={g.id}>
                 <View style={styles.rowBetween}>
-                  <Text style={styles.cardTitle}>{g.name}</Text>
+                  <Text style={[styles.cardTitle, { flex: 1 }]}>{g.name}</Text>
                   <View style={styles.plainHeaderRight}>
                     <Text style={[styles.goalPctText, { color: tint }]}>{Math.round(pct)}%</Text>
                     <Pressable onPress={() => startEdit(g)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('goals.changeLink')}>
@@ -359,11 +359,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   plainHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexShrink: 0,
   },
   cardTitle: {
     fontSize: 16,
@@ -376,6 +378,7 @@ const styles = StyleSheet.create({
   heroTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   heroCardTitle: {
     fontSize: 18,
