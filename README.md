@@ -46,9 +46,12 @@ npm test          # run the Jest test suite
 
 Requires the [Expo Go](https://expo.dev/go) app (SDK 54 build) for quick testing on a physical device, or an EAS build for a standalone install.
 
-## Privacy
+## Legal
 
-See [PRIVACY.md](PRIVACY.md) — also published at **https://awzi7.github.io/mindful-wallet/**.
+- Privacy Policy — [PRIVACY.md](PRIVACY.md), published at **https://awzi7.github.io/mindful-wallet/**
+- Terms of Use — [TERMS.md](TERMS.md), published at **https://awzi7.github.io/mindful-wallet/terms.html**
+
+Both are linked from the in-app paywall and Settings, as required by App Store Guideline 3.1.2.
 
 ## License
 

@@ -305,6 +305,10 @@ export default {
     unlockButton: 'Unlock Premium',
     testModeNote: 'Test mode: no real payment is made. This flips a local flag so you can try the premium experience before wiring up real purchases.',
     continueFree: 'Not now',
+    autoRenewNote:
+      'Subscriptions renew automatically at the price shown above until cancelled. Your account is charged within 24 hours before the end of each period. Manage or cancel anytime in your app store account settings.',
+    termsLink: 'Terms of Use',
+    privacyLink: 'Privacy Policy',
     alreadyPremiumTitle: "You're Premium ✓",
     alreadyPremiumBody: 'All premium features are unlocked. Thank you for your support!',
     unlockedToast: 'Premium unlocked 🎉',

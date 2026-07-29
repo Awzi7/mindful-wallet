@@ -1,11 +1,10 @@
 # Политика конфиденциальности — Mindful Wallet
 
-_Дата вступления в силу: [укажите дату публикации]_
+_Дата вступления в силу: 29 июля 2026 г._
 
-Это черновик политики конфиденциальности для приложения Mindful Wallet. Перед публикацией в App
-Store / Google Play разместите этот текст на любой странице с постоянным URL (например, GitHub
-Pages, Notion, ваш сайт) и укажите эту ссылку в App Store Connect / Google Play Console, а также
-замените плейсхолдеры `[...]` реальными данными.
+Опубликованная версия этой политики доступна по адресу **https://awzi7.github.io/mindful-wallet/** —
+именно эту ссылку следует указывать в App Store Connect и Google Play Console. См. также
+[Условия использования](TERMS.md).
 
 ## Какие данные собирает приложение
 
@@ -35,6 +34,20 @@ Mindful Wallet не имеет собственного сервера и не �
 зашифрованном хранилище (Keychain на iOS, Keystore на Android) и используются исключительно для
 прямых запросов к серверу соответствующего провайдера.
 
+## Подписки и платежи
+
+Необязательная подписка Premium обрабатывается магазином приложений (Apple App Store или Google
+Play). Разработчик никогда не видит и не получает ваши платёжные данные.
+
+Для проверки активности подписки приложение использует сервис управления подписками
+[RevenueCat](https://www.revenuecat.com/privacy/). При активной подписке или совершении покупки
+RevenueCat получает случайно сгенерированный анонимный идентификатор пользователя, статус вашей
+покупки и подписки от магазина, а также базовую информацию об устройстве и платформе. Он не
+получает ваше имя, email или какие-либо данные о ваших тратах.
+
+Управлять подпиской или отменить её можно в настройках вашего аккаунта в магазине приложений
+(App Store: Apple ID → Подписки; Google Play: Подписки).
+
 ## Уведомления
 
 Приложение может показывать локальные push-уведомления (например, напоминания коуча). Эти
@@ -56,12 +69,13 @@ push-серверы разработчика.
 
 ## Удаление данных
 
-Все данные удаляются при удалении приложения с устройства. Отдельно сохранённые файлы резервных
-копий (см. выше) нужно удалять вручную.
+Все данные приложения удаляются при удалении приложения с устройства. Также в Настройках есть
+действие «удалить все данные», которое стирает всё немедленно. Отдельно сохранённые файлы резервных
+копий (см. выше) нужно удалять вручную. Серверного хранения, которое требовалось бы удалять, нет.
 
 ## Контакты
 
-По вопросам, связанным с конфиденциальностью, обращайтесь: `[укажите ваш контактный email]`.
+По вопросам, связанным с конфиденциальностью, обращайтесь: koledik06@gmail.com
 
 ---
 
@@ -76,5 +90,8 @@ API keys you enter are stored in the device's encrypted secure storage (Keychain
 on Android) and used only for direct requests to that provider. An optional backup feature in
 Settings lets you export all your data (including API keys) to a single unencrypted file that
 stays entirely on your device, and import it back later — handle that file as carefully as a
-password file. The app shows no ads, uses no third-party analytics trackers, and does not sell or
-share your data.
+password file. The optional Premium subscription is processed by your app store; the developer never
+sees your payment details, and [RevenueCat](https://www.revenuecat.com/privacy/) receives only an
+anonymous app user ID, your store purchase/subscription status, and basic device information — never
+your name, email, or spending data. The app shows no ads, uses no third-party analytics trackers, and
+does not sell or share your data.

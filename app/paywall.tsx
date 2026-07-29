@@ -11,6 +11,7 @@ import { HeroCard } from '@/components/HeroCard';
 import { usePremium, FREE_CUSTOM_CATEGORY_LIMIT } from '@/lib/premium';
 import type { PurchasesPackage } from '@/lib/iap';
 import { useI18n } from '@/lib/i18n';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL, openLegalUrl } from '@/lib/legal';
 
 const FEATURES: { icon: keyof typeof Ionicons.glyphMap; titleKey: string; descKey: string; vars?: Record<string, number> }[] = [
   { icon: 'pricetags-outline', titleKey: 'premium.featureCategoriesTitle', descKey: 'premium.featureCategoriesDesc', vars: { limit: FREE_CUSTOM_CATEGORY_LIMIT } },
@@ -229,6 +230,19 @@ export default function PaywallScreen() {
             <Pressable style={styles.laterLink} onPress={close}>
               <Text style={{ color: subtle }}>{t('premium.continueFree')}</Text>
             </Pressable>
+
+            {/* Required by App Store Guideline 3.1.2: auto-renewal terms plus links to
+                the Terms of Use and Privacy Policy, on the purchase screen itself. */}
+            <Text style={[styles.legalNote, { color: subtle }]}>{t('premium.autoRenewNote')}</Text>
+            <View style={styles.legalLinks}>
+              <Pressable onPress={() => openLegalUrl(TERMS_OF_USE_URL)} hitSlop={6} accessibilityRole="link">
+                <Text style={[styles.legalLinkText, { color: tint }]}>{t('premium.termsLink')}</Text>
+              </Pressable>
+              <Text style={{ color: subtle }}>·</Text>
+              <Pressable onPress={() => openLegalUrl(PRIVACY_POLICY_URL)} hitSlop={6} accessibilityRole="link">
+                <Text style={[styles.legalLinkText, { color: tint }]}>{t('premium.privacyLink')}</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </ScrollView>
@@ -350,6 +364,24 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 16,
     padding: 8,
+  },
+  legalNote: {
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+    marginTop: 18,
+    paddingHorizontal: 4,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  legalLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   infoBanner: {
     flexDirection: 'row',

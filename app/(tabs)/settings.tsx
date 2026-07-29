@@ -38,6 +38,7 @@ import {
   setUserName,
 } from '@/lib/storage';
 import { testProviderConnection, AIError } from '@/lib/ai';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL, openLegalUrl } from '@/lib/legal';
 import {
   ActiveAIOption,
   CURRENCIES,
@@ -538,6 +539,15 @@ export default function SettingsScreen() {
       <Text style={[styles.groupTitle, { color: subtle }]}>{t('settings.privacy')}</Text>
       <Card>
         <Text style={[styles.hint, { color: subtle }]}>{t('settings.privacyText')}</Text>
+        <View style={styles.legalLinks}>
+          <Pressable onPress={() => openLegalUrl(PRIVACY_POLICY_URL)} hitSlop={6} accessibilityRole="link">
+            <Text style={[styles.legalLinkText, { color: tint }]}>{t('premium.privacyLink')}</Text>
+          </Pressable>
+          <Text style={{ color: subtle }}>·</Text>
+          <Pressable onPress={() => openLegalUrl(TERMS_OF_USE_URL)} hitSlop={6} accessibilityRole="link">
+            <Text style={[styles.legalLinkText, { color: tint }]}>{t('premium.termsLink')}</Text>
+          </Pressable>
+        </View>
       </Card>
 
       <Text style={[styles.groupTitle, { color: subtle }]}>{t('settings.resetData')}</Text>
@@ -604,6 +614,16 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 12,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  legalLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   groupTitle: {
     fontSize: 12,
