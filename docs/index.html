@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mindful Wallet — Privacy Policy</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #FBF3EA;
+    --text: #241C16;
+    --subtle: #8C8074;
+    --card: #FFFFFF;
+    --border: #F0E3D4;
+    --tint: #2E9E8F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #221F1C;
+      --text: #F2EDE7;
+      --subtle: #ABA097;
+      --card: #2F2B27;
+      --border: #413B35;
+      --tint: #5AD1C2;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  .effective-date {
+    color: var(--subtle);
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+  }
+  .lang-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .lang-toggle button {
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .lang-toggle button[aria-pressed="true"] {
+    border-color: var(--tint);
+    color: var(--tint);
+    font-weight: 600;
+  }
+  section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-size: 1.05rem;
+    margin: 0 0 8px;
+  }
+  p, li {
+    font-size: 0.95rem;
+  }
+  a { color: var(--tint); }
+  ul { padding-left: 20px; margin: 8px 0; }
+  .lang-block[hidden] { display: none; }
+  footer {
+    margin-top: 32px;
+    color: var(--subtle);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mindful Wallet</h1>
+  <div class="effective-date">Privacy Policy · Effective date: July 24, 2026</div>
+
+  <div class="lang-toggle">
+    <button data-lang="en" aria-pressed="true">English</button>
+    <button data-lang="ru" aria-pressed="false">Русский</button>
+  </div>
+
+  <div class="lang-block" data-lang="en">
+    <section>
+      <h2>What data the app collects</h2>
+      <p>Mindful Wallet has no backend server and does not collect data centrally. All data — expense records, savings goals, weekly budgets, points, and achievements — is stored <strong>only on your device</strong> (in the app's local storage) and is never transmitted to the developer.</p>
+    </section>
+    <section>
+      <h2>Data you share with third-party AI providers</h2>
+      <p>If you enable the AI coach features, the app sends a request directly from your device to the server of the provider you selected (Anthropic, OpenAI, or Google) — bypassing any developer server. The request includes:</p>
+      <ul>
+        <li>the text of your question or the purchase you're describing;</li>
+        <li>a summary of your spending, budget, and savings goal for the current week, generated on-device.</li>
+      </ul>
+      <p>Processing of this data by the provider is governed by that provider's own privacy policy:</p>
+      <ul>
+        <li><a href="https://www.anthropic.com/legal/privacy">Anthropic</a></li>
+        <li><a href="https://openai.com/policies/privacy-policy">OpenAI</a></li>
+        <li><a href="https://policies.google.com/privacy">Google</a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>API key storage</h2>
+      <p>API keys you enter in Settings are stored locally on your device and used only for direct requests to the corresponding provider's server.</p>
+    </section>
+    <section>
+      <h2>Notifications</h2>
+      <p>The app may show local push notifications (e.g. coach reminders). These are generated and scheduled entirely on-device and do not pass through any external push server operated by the developer.</p>
+    </section>
+    <section>
+      <h2>Location</h2>
+      <p>If you grant location access, it is used only while the app is open, to detect when you're near a place you've marked as a spending "hotspot" and warn you ahead of time. Location data is not transmitted anywhere and is not stored outside your device.</p>
+    </section>
+    <section>
+      <h2>Sharing with third parties &amp; advertising</h2>
+      <p>The app does not sell or share your data with third parties, shows no ads, and uses no third-party analytics trackers.</p>
+    </section>
+    <section>
+      <h2>Data deletion</h2>
+      <p>All data is deleted when you delete the app from your device. There is no separate export function or server-side storage.</p>
+    </section>
+    <section>
+      <h2>Contact</h2>
+      <p>For privacy-related questions, contact: <a href="mailto:koledik06@gmail.com">koledik06@gmail.com</a>.</p>
+    </section>
+  </div>
+
+  <div class="lang-block" data-lang="ru" hidden>
+    <section>
+      <h2>Какие данные собирает приложение</h2>
+      <p>Mindful Wallet не имеет собственного сервера и не собирает данные централизованно. Все данные — записи о тратах, цели накоплений, недельные лимиты, очки и достижения — хранятся <strong>только на вашем устройстве</strong> (в локальном хранилище приложения) и никогда не передаются разработчику.</p>
+    </section>
+    <section>
+      <h2>Данные, которые вы предоставляете сторонним ИИ-провайдерам</h2>
+      <p>Если вы включаете функции ИИ-коуча, приложение отправляет запрос напрямую с вашего устройства на сервер выбранного вами провайдера (Anthropic, OpenAI или Google) — минуя любые серверы разработчика приложения. В запрос включаются:</p>
+      <ul>
+        <li>текст вашего вопроса или описание планируемой покупки;</li>
+        <li>сводка ваших трат, бюджета и цели накоплений за текущую неделю, сформированная на устройстве.</li>
+      </ul>
+      <p>Обработка этих данных на стороне провайдера регулируется его собственной политикой конфиденциальности:</p>
+      <ul>
+        <li><a href="https://www.anthropic.com/legal/privacy">Anthropic</a></li>
+        <li><a href="https://openai.com/policies/privacy-policy">OpenAI</a></li>
+        <li><a href="https://policies.google.com/privacy">Google</a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Хранение API-ключей</h2>
+      <p>Ключи API, которые вы вводите в Настройках, хранятся локально на устройстве и используются исключительно для прямых запросов к серверу соответствующего провайдера.</p>
+    </section>
+    <section>
+      <h2>Уведомления</h2>
+      <p>Приложение может показывать локальные push-уведомления (например, напоминания коуча). Эти уведомления формируются и планируются на самом устройстве и не проходят через внешние push-серверы разработчика.</p>
+    </section>
+    <section>
+      <h2>Геолокация</h2>
+      <p>Если вы предоставите доступ к геолокации, она используется только пока приложение открыто — чтобы определить, что вы рядом с местом, отмеченным как «горячая точка» трат, и предупредить вас заранее. Данные о местоположении никуда не передаются и не хранятся за пределами устройства.</p>
+    </section>
+    <section>
+      <h2>Передача третьим лицам и реклама</h2>
+      <p>Приложение не продаёт и не передаёт ваши данные третьим лицам, не показывает рекламу и не использует сторонние трекеры аналитики.</p>
+    </section>
+    <section>
+      <h2>Удаление данных</h2>
+      <p>Все данные удаляются при удалении приложения с устройства. Отдельной функции экспорта или серверного хранения нет.</p>
+    </section>
+    <section>
+      <h2>Контакты</h2>
+      <p>По вопросам, связанным с конфиденциальностью, обращайтесь: <a href="mailto:koledik06@gmail.com">koledik06@gmail.com</a>.</p>
+    </section>
+  </div>
+
+  <footer>Mindful Wallet · <a href="https://github.com/Awzi7/mindful-wallet">Source code on GitHub</a></footer>
+</div>
+<script>
+  var buttons = document.querySelectorAll('.lang-toggle button');
+  var blocks = document.querySelectorAll('.lang-block');
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var lang = btn.getAttribute('data-lang');
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+      blocks.forEach(function (b) {
+        b.hidden = b.getAttribute('data-lang') !== lang;
+      });
+    });
+  });
+</script>
+</body>
+</html>
