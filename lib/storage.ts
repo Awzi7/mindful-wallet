@@ -685,7 +685,8 @@ export async function resetAllData(): Promise<void> {
 export async function checkAchievements(): Promise<void> {
   const [gam, goals, txs] = await Promise.all([getGamification(), getGoals(), getTransactions()]);
 
-  if (txs.length >= 10) {
+  // The achievement copy promises "10 expenses logged", so income must not count toward it.
+  if (expensesOnly(txs).length >= 10) {
     await unlockAchievement('tracker-10');
   }
   if (gam.streak >= 3) {

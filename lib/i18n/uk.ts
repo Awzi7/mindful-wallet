@@ -272,6 +272,8 @@ export default {
     viewByDay: 'За днями',
     viewWholeMonth: 'Увесь місяць',
     noResults: 'Нічого не знайдено. Спробуйте інший запит або категорію.',
+    noResultsThisDay: 'Цього дня збігів немає, але в місяці їх {{count}}.',
+    showWholeMonth: 'Показати весь місяць',
     resultsCount: 'Знайдено: {{count}} · витрат на {{amount}}',
     monthIncome: 'Дохід: {{amount}}',
     monthNet: 'Баланс: {{amount}}',

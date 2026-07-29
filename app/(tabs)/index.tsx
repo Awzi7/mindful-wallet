@@ -296,7 +296,9 @@ export default function HomeScreen() {
   };
 
   const weekPct = weekBudgetTotal > 0 ? Math.min(100, (weekSpentTotal / weekBudgetTotal) * 100) : 0;
-  const goalPct = goal ? Math.min(100, (goal.savedAmount / goal.targetAmount) * 100) : 0;
+  // Guarded like the Goals screen does: a zero target (reachable via a hand-edited backup
+  // import) would divide by zero and render "NaN%".
+  const goalPct = goal && goal.targetAmount > 0 ? Math.min(100, (goal.savedAmount / goal.targetAmount) * 100) : 0;
   const weekdayLabels = tArray('heatmap.weekdays');
   const recurringItems = useMemo(() => detectRecurringExpenses(allTransactions), [allTransactions]);
   const daypartLabels = DAYPART_KEYS.map((k) => t(`heatmap.${k}`));

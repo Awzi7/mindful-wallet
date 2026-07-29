@@ -108,12 +108,6 @@ export default function HistoryScreen() {
 
   const trimmedQuery = query.trim().toLowerCase();
 
-  /**
-   * A search or category filter is inherently cross-day, so an active filter switches the list
-   * to the whole month - otherwise a match on another day would look like "nothing found".
-   */
-  const showWholeMonth = wholeMonth || trimmedQuery !== '' || categoryFilter !== null;
-
   const matchesQuery = useCallback(
     (tx: Transaction) => {
       if (!trimmedQuery) return true;
@@ -127,18 +121,29 @@ export default function HistoryScreen() {
     [trimmedQuery, customCategories, t]
   );
 
-  const visibleTransactions = useMemo(
+  /** Filters applied without any day restriction - the pool the current scope narrows down. */
+  const monthMatches = useMemo(
     () =>
       monthTransactions
-        .filter((tx) => (showWholeMonth ? true : dateKey(new Date(tx.createdAt)) === selectedKey))
         .filter((tx) => (categoryFilter ? tx.category === categoryFilter : true))
         .filter(matchesQuery)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [monthTransactions, showWholeMonth, selectedKey, categoryFilter, matchesQuery]
+    [monthTransactions, categoryFilter, matchesQuery]
+  );
+
+  const visibleTransactions = useMemo(
+    () => (wholeMonth ? monthMatches : monthMatches.filter((tx) => dateKey(new Date(tx.createdAt)) === selectedKey)),
+    [monthMatches, wholeMonth, selectedKey]
   );
 
   const visibleSpend = sumAmount(expensesOnly(visibleTransactions));
   const hasFilters = trimmedQuery !== '' || categoryFilter !== null;
+
+  /**
+   * Matches exist this month but not on the selected day. Rather than silently wiping the
+   * user's query when they pick the day view, offer to widen the scope.
+   */
+  const hiddenByDayScope = !wholeMonth && hasFilters && visibleTransactions.length === 0 && monthMatches.length > 0;
 
   const clearFilters = () => {
     setQuery('');
@@ -158,6 +163,16 @@ export default function HistoryScreen() {
   const handleSelectDate = (key: string) => {
     setSelectedKey(key);
     setWholeMonth(false);
+  };
+
+  /**
+   * Starting a search widens the scope to the month, since matches are usually on other days.
+   * This flips the real toggle state (rather than overriding it), so the control keeps telling
+   * the truth and the user can narrow back to one day without losing what they typed.
+   */
+  const handleQueryChange = (next: string) => {
+    setQuery(next);
+    if (next.trim() !== '' && !wholeMonth) setWholeMonth(true);
   };
 
   const goPrevMonth = () => {
@@ -255,7 +270,7 @@ export default function HistoryScreen() {
             placeholder={t('history.searchPlaceholder')}
             placeholderTextColor={subtle}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={handleQueryChange}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -287,15 +302,12 @@ export default function HistoryScreen() {
             { key: false, labelKey: 'history.viewByDay' },
             { key: true, labelKey: 'history.viewWholeMonth' },
           ].map((option) => {
-            const active = showWholeMonth === option.key;
+            const active = wholeMonth === option.key;
             return (
               <Pressable
                 key={String(option.key)}
                 style={[styles.viewSegment, active && { backgroundColor: accentSoft }]}
-                onPress={() => {
-                  setWholeMonth(option.key);
-                  if (!option.key) clearFilters(); // going back to day view drops the cross-day filters
-                }}
+                onPress={() => setWholeMonth(option.key)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: active }}>
                 <Text style={[styles.viewSegmentText, { color: active ? accent : subtle }]} numberOfLines={1}>
@@ -315,9 +327,20 @@ export default function HistoryScreen() {
 
       <Card>
         {visibleTransactions.length === 0 ? (
-          <Text style={[styles.emptyText, { color: subtle }]}>
-            {hasFilters ? t('history.noResults') : t('history.noTransactionsForDay')}
-          </Text>
+          hiddenByDayScope ? (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={[styles.emptyText, { color: subtle }]}>
+                {t('history.noResultsThisDay', { count: monthMatches.length })}
+              </Text>
+              <Pressable onPress={() => setWholeMonth(true)} accessibilityRole="button">
+                <Text style={[styles.infoBannerLink, { color: tint }]}>{t('history.showWholeMonth')}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={[styles.emptyText, { color: subtle }]}>
+              {hasFilters ? t('history.noResults') : t('history.noTransactionsForDay')}
+            </Text>
+          )
         ) : (
           visibleTransactions.map((tx, i) => {
             const label = resolveCategoryLabel(tx.category, customCategories, t);
@@ -343,7 +366,7 @@ export default function HistoryScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.txLabel}>{label}</Text>
                   <Text style={[styles.txSub, { color: subtle }]}>
-                    {showWholeMonth ? `${dayMonth} · ${time}` : time}
+                    {wholeMonth ? `${dayMonth} · ${time}` : time}
                     {tx.place ? ` · ${tx.place}` : ''}
                   </Text>
                   {tx.note ? (
