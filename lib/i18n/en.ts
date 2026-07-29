@@ -165,6 +165,9 @@ export default {
     importSuccessBody: 'Your data has been restored from the file. Restart the app to see the changes.',
     importErrorTitle: "Didn't work",
     importErrorBody: "This file is damaged or isn't a Mindful Wallet backup.",
+    importPartialTitle: 'Restored partially',
+    importPartialBody:
+      'Part of the file was damaged, so {{count}} section(s) were skipped. The rest was restored — check your data and try another backup if something is missing.',
     resetData: 'Reset everything',
     resetDataHint: 'Deletes every expense, goal, setting, and API key from this device and shows the welcome screen again — like a first launch.',
     resetButton: 'Reset all data',

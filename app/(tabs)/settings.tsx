@@ -239,8 +239,17 @@ export default function SettingsScreen() {
     if (!pendingImportJson) return;
     setImporting(true);
     try {
-      await importAllData(pendingImportJson);
-      setBackupNotice({ tone: 'success', title: t('settings.importSuccessTitle'), body: t('settings.importSuccessBody') });
+      const { skipped } = await importAllData(pendingImportJson);
+      // A partial restore must say so - silently dropping part of a backup is worse than failing.
+      setBackupNotice(
+        skipped.length > 0
+          ? {
+              tone: 'error',
+              title: t('settings.importPartialTitle'),
+              body: t('settings.importPartialBody', { count: skipped.length }),
+            }
+          : { tone: 'success', title: t('settings.importSuccessTitle'), body: t('settings.importSuccessBody') }
+      );
     } catch {
       setBackupNotice({ tone: 'error', title: t('settings.importErrorTitle'), body: t('settings.importErrorBody') });
     } finally {

@@ -88,6 +88,38 @@ async function getJSON<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+/**
+ * Shape-checked reads. Plain getJSON only survives *unparseable* JSON - valid JSON of the wrong
+ * shape (an object where a list is expected, say) sails through and blows up later at the first
+ * .filter/.map or property access, taking the screen with it. A hand-edited or truncated backup
+ * file is the realistic way that happens, since importAllData writes whatever the file contains.
+ */
+async function getJSONArray<T>(key: string): Promise<T[]> {
+  const raw = await AsyncStorage.getItem(key);
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function getJSONObject<T>(key: string, fallback: T): Promise<T> {
+  const raw = await AsyncStorage.getItem(key);
+  if (!raw) return fallback;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isPlainObject(parsed) ? (parsed as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function setJSON(key: string, value: unknown): Promise<void> {
   return AsyncStorage.setItem(key, JSON.stringify(value));
 }
@@ -106,7 +138,7 @@ function defaultProviderSettings(): ProviderSettings {
 type StoredModels = Partial<Record<Provider, { model: string }>>;
 
 export async function getProviderSettings(): Promise<ProviderSettings> {
-  const stored = await getJSON<Partial<Record<Provider, Partial<ProviderConfig>>>>(KEYS.providers, {});
+  const stored = await getJSONObject<Partial<Record<Provider, Partial<ProviderConfig>>>>(KEYS.providers, {});
   const defaults = defaultProviderSettings();
   let needsStrip = false;
 
@@ -141,7 +173,7 @@ export async function setProviderConfig(provider: Provider, config: Partial<Prov
     }
   }
   if (config.model !== undefined) {
-    const models = await getJSON<StoredModels>(KEYS.providers, {});
+    const models = await getJSONObject<StoredModels>(KEYS.providers, {});
     models[provider] = { model: config.model };
     await setJSON(KEYS.providers, models);
   }
@@ -242,7 +274,7 @@ export function setUserAvatar(avatar: string): Promise<void> {
 // ---------- transactions ----------
 
 export async function getTransactions(): Promise<Transaction[]> {
-  return getJSON<Transaction[]>(KEYS.transactions, []);
+  return getJSONArray<Transaction>(KEYS.transactions);
 }
 
 export async function addTransaction(tx: Omit<Transaction, 'id' | 'createdAt'> & { createdAt?: string }): Promise<Transaction> {
@@ -325,11 +357,21 @@ function makeGoalId(): string {
 }
 
 export async function getGoals(): Promise<Goal[]> {
-  const stored = await getJSON<Goal[] | null>(KEYS.goals, null);
-  if (stored) return stored;
+  const raw = await AsyncStorage.getItem(KEYS.goals);
+  if (raw) {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      // Only a real array counts as "already migrated". A wrong-shaped value must fall through
+      // to the migration below rather than being handed back and crashing the Goals screen.
+      // An empty array is legitimate - the user deleted every goal - so it is returned as is.
+      if (Array.isArray(parsed)) return parsed as Goal[];
+    } catch {
+      // fall through to migration / default
+    }
+  }
 
   // Migrate from the pre-multi-goal single-object shape, if present; otherwise seed one default.
-  const legacy = await getJSON<Omit<Goal, 'id'> | null>(KEYS.goal, null);
+  const legacy = await getJSONObject<Omit<Goal, 'id'> | null>(KEYS.goal, null);
   const migrated = legacy ? [{ id: 'default', ...legacy }] : [DEFAULT_GOAL];
   await setJSON(KEYS.goals, migrated);
   return migrated;
@@ -385,7 +427,7 @@ export const DEFAULT_WEEKLY_BUDGET: WeeklyBudget = {
 };
 
 export async function getWeeklyBudget(): Promise<WeeklyBudget> {
-  return getJSON<WeeklyBudget>(KEYS.budget, DEFAULT_WEEKLY_BUDGET);
+  return getJSONObject<WeeklyBudget>(KEYS.budget, DEFAULT_WEEKLY_BUDGET);
 }
 
 export function setWeeklyBudget(budget: WeeklyBudget): Promise<void> {
@@ -439,7 +481,7 @@ export async function getAverageWeeklyIncome(weeks = 8): Promise<number> {
 const DEFAULT_CUSTOM_CATEGORY_BUDGET = 20;
 
 export async function getCustomCategories(): Promise<CustomCategory[]> {
-  return getJSON<CustomCategory[]>(KEYS.customCategories, []);
+  return getJSONArray<CustomCategory>(KEYS.customCategories);
 }
 
 export async function addCustomCategory(cat: Omit<CustomCategory, 'id'>): Promise<CustomCategory[]> {
@@ -478,7 +520,15 @@ const DEFAULT_GAMIFICATION: GamificationState = {
 };
 
 export async function getGamification(): Promise<GamificationState> {
-  return getJSON<GamificationState>(KEYS.gamification, DEFAULT_GAMIFICATION);
+  const stored = await getJSONObject<Partial<GamificationState>>(KEYS.gamification, {});
+  // Field-level defaults: callers read gam.achievements.length and gam.points arithmetic
+  // directly, so a partially-written blob must not hand back undefined for either.
+  return {
+    points: typeof stored.points === 'number' ? stored.points : 0,
+    streak: typeof stored.streak === 'number' ? stored.streak : 0,
+    lastActivityDate: typeof stored.lastActivityDate === 'string' ? stored.lastActivityDate : null,
+    achievements: Array.isArray(stored.achievements) ? stored.achievements : [],
+  };
 }
 
 function todayStr(d: Date = new Date()): string {
@@ -517,7 +567,7 @@ export async function unlockAchievement(id: string, params?: Record<string, stri
 // ---------- daily check-in ----------
 
 export async function getTodayCheckIn(): Promise<DailyCheckIn | null> {
-  const stored = await getJSON<DailyCheckIn | null>(KEYS.checkIn, null);
+  const stored = await getJSONObject<DailyCheckIn | null>(KEYS.checkIn, null);
   if (stored && stored.date === todayStr()) return stored;
   return null;
 }
@@ -529,7 +579,7 @@ export function saveTodayCheckIn(data: Omit<DailyCheckIn, 'date'>): Promise<void
 // ---------- coach history ----------
 
 export async function getCoachHistory(): Promise<CoachHistoryItem[]> {
-  return getJSON<CoachHistoryItem[]>(KEYS.coachHistory, []);
+  return getJSONArray<CoachHistoryItem>(KEYS.coachHistory);
 }
 
 export async function addCoachHistory(question: string, answer: string): Promise<CoachHistoryItem[]> {
@@ -548,7 +598,7 @@ export async function addCoachHistory(question: string, answer: string): Promise
 // ---------- hotspot places (real geolocation) ----------
 
 export async function getHotspotPlaces(): Promise<HotspotPlace[]> {
-  return getJSON<HotspotPlace[]>(KEYS.hotspotPlaces, []);
+  return getJSONArray<HotspotPlace>(KEYS.hotspotPlaces);
 }
 
 export async function addHotspotPlace(place: Omit<HotspotPlace, 'id' | 'createdAt'>): Promise<HotspotPlace[]> {
@@ -573,7 +623,7 @@ export async function removeHotspotPlace(id: string): Promise<HotspotPlace[]> {
 // ---------- in-app notifications ----------
 
 export async function getNotifications(): Promise<AppNotification[]> {
-  return getJSON<AppNotification[]>(KEYS.notifications, []);
+  return getJSONArray<AppNotification>(KEYS.notifications);
 }
 
 export async function addNotification(title: string, body: string): Promise<AppNotification[]> {
@@ -643,30 +693,90 @@ export async function exportAllData(): Promise<string> {
   return JSON.stringify(payload, null, 2);
 }
 
-export async function importAllData(json: string): Promise<void> {
+/**
+ * Keys whose stored value must be a JSON array, and those that must be a JSON object. A backup
+ * entry that parses but has the wrong shape is dropped rather than written: importing it would
+ * put a landmine in storage that only goes off later, on whichever screen reads that key.
+ */
+const ARRAY_BACKUP_KEYS: readonly string[] = [
+  KEYS.transactions,
+  KEYS.goals,
+  KEYS.customCategories,
+  KEYS.coachHistory,
+  KEYS.hotspotPlaces,
+  KEYS.notifications,
+];
+
+const OBJECT_BACKUP_KEYS: readonly string[] = [
+  KEYS.providers,
+  KEYS.budget,
+  KEYS.gamification,
+  KEYS.checkIn,
+  KEYS.dailyPrediction,
+  KEYS.goal,
+];
+
+/** True when `raw` is JSON of the shape this key is expected to hold. */
+function backupValueHasValidShape(key: string, raw: string): boolean {
+  const expectsArray = ARRAY_BACKUP_KEYS.includes(key);
+  const expectsObject = OBJECT_BACKUP_KEYS.includes(key);
+  if (!expectsArray && !expectsObject) return true; // plain scalars (currency, name, flags)
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  return expectsArray ? Array.isArray(parsed) : isPlainObject(parsed);
+}
+
+export interface ImportResult {
+  /** Keys written to storage. */
+  imported: number;
+  /** Keys present in the file but skipped because their value had the wrong shape. */
+  skipped: string[];
+}
+
+export async function importAllData(json: string): Promise<ImportResult> {
   let payload: BackupPayload;
   try {
     payload = JSON.parse(json);
   } catch {
     throw new Error('invalid-json');
   }
-  if (!payload || typeof payload !== 'object' || typeof payload.data !== 'object') {
+  if (!isPlainObject(payload) || !isPlainObject(payload.data)) {
     throw new Error('invalid-format');
   }
 
-  const entries = Object.entries(payload.data).filter(
+  const candidates = Object.entries(payload.data).filter(
     (entry): entry is [string, string] => entry[0].startsWith('@mw/') && typeof entry[1] === 'string'
   );
+
+  const entries: [string, string][] = [];
+  const skipped: string[] = [];
+  for (const [key, value] of candidates) {
+    if (backupValueHasValidShape(key, value)) entries.push([key, value]);
+    else skipped.push(key);
+  }
+
+  // A file whose recognised entries are all malformed is a broken file, not a partial restore.
+  if (entries.length === 0 && skipped.length > 0) {
+    throw new Error('invalid-format');
+  }
+
   if (entries.length > 0) {
     await AsyncStorage.multiSet(entries);
   }
 
-  if (payload.secureKeys) {
+  if (isPlainObject(payload.secureKeys)) {
     for (const p of PROVIDERS) {
       const apiKey = payload.secureKeys[p];
-      if (apiKey) await secureSet(secureApiKeyKey(p), apiKey);
+      if (typeof apiKey === 'string' && apiKey) await secureSet(secureApiKeyKey(p), apiKey);
     }
   }
+
+  return { imported: entries.length, skipped };
 }
 
 /** Wipes every locally stored value (transactions, goals, settings, API keys) as if the app were freshly installed. */
@@ -717,7 +827,7 @@ interface CachedPrediction {
 }
 
 export async function getCachedDailyPrediction(): Promise<string | null> {
-  const cached = await getJSON<CachedPrediction | null>(KEYS.dailyPrediction, null);
+  const cached = await getJSONObject<CachedPrediction | null>(KEYS.dailyPrediction, null);
   if (cached && cached.date === todayStr()) return cached.text;
   return null;
 }
