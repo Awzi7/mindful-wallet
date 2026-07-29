@@ -9,6 +9,7 @@ import { Card } from '@/components/Card';
 import {
   DEFAULT_WEEKLY_BUDGET,
   addCustomCategory,
+  getAverageWeeklyIncome,
   getCurrency,
   getCustomCategories,
   getTransactions,
@@ -18,6 +19,7 @@ import {
 } from '@/lib/storage';
 import { getAllCategoriesResolved } from '@/lib/categories';
 import { suggestWeeklyBudget } from '@/lib/budget';
+import { formatMoney } from '@/lib/format';
 import {
   CURRENCY_META,
   CUSTOM_CATEGORY_COLOR_CHOICES,
@@ -107,7 +109,20 @@ export default function CategoriesScreen() {
       const next = { ...budget, ...suggestion };
       setBudget(next);
       await setWeeklyBudget(next);
-      setSuggestNotice(t('settings.suggestBudgetApplied'));
+
+      // If income has been logged, say what share of it this budget represents. Purely
+      // informational - the app deliberately does not tell anyone what they should spend.
+      const avgWeeklyIncome = await getAverageWeeklyIncome();
+      const budgetTotal = Object.values(next).reduce((s, v) => s + v, 0);
+      const share =
+        avgWeeklyIncome > 0
+          ? ' ' +
+            t('settings.suggestBudgetIncomeShare', {
+              pct: Math.round((budgetTotal / avgWeeklyIncome) * 100),
+              income: formatMoney(Math.round(avgWeeklyIncome), currency),
+            })
+          : '';
+      setSuggestNotice(t('settings.suggestBudgetApplied') + share);
     } finally {
       setSuggesting(false);
     }

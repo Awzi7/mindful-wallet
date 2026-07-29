@@ -5,8 +5,8 @@ import type { Ionicons } from '@expo/vector-icons';
 import { Text, useThemeColor } from './Themed';
 import { Pill } from './Pill';
 import { getCustomCategories, removeTransaction, updateTransaction } from '@/lib/storage';
-import { getAllCategoriesResolved } from '@/lib/categories';
-import { CurrencyCode, CURRENCY_META, CustomCategory, Transaction } from '@/lib/types';
+import { getAllCategoriesResolved, getIncomeCategoriesResolved } from '@/lib/categories';
+import { CurrencyCode, CURRENCY_META, CustomCategory, Transaction, isIncome } from '@/lib/types';
 import { useI18n } from '@/lib/i18n';
 
 export function EditTransactionModal({
@@ -51,7 +51,10 @@ export function EditTransactionModal({
 
   if (!transaction) return null;
 
-  const allCategories = getAllCategoriesResolved(customCategories, t);
+  // An income entry must keep choosing from income sources - offering 'cafe' here would let a
+  // saved income row carry a spending category.
+  const incomeMode = isIncome(transaction);
+  const allCategories = incomeMode ? getIncomeCategoriesResolved(t) : getAllCategoriesResolved(customCategories, t);
   const amountNumber = Number(amount.replace(/[^0-9]/g, ''));
   const canSave = amountNumber > 0;
 
@@ -82,7 +85,9 @@ export function EditTransactionModal({
           <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>{t('editTx.title')}</Text>
 
-            <Text style={styles.label}>{t('add.amountLabel', { symbol: CURRENCY_META[currency].symbol })}</Text>
+            <Text style={styles.label}>
+              {t(incomeMode ? 'add.incomeAmountLabel' : 'add.amountLabel', { symbol: CURRENCY_META[currency].symbol })}
+            </Text>
             <TextInput
               style={[styles.amountInput, { borderColor: border, color: textColor }]}
               keyboardType="number-pad"
@@ -90,7 +95,7 @@ export function EditTransactionModal({
               onChangeText={setAmount}
             />
 
-            <Text style={styles.label}>{t('add.categoryLabel')}</Text>
+            <Text style={styles.label}>{t(incomeMode ? 'add.incomeCategoryLabel' : 'add.categoryLabel')}</Text>
             <View style={styles.chipRow}>
               {allCategories.map((cat) => (
                 <Pill

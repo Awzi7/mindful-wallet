@@ -1,15 +1,24 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Text, useThemeColor } from '@/components/Themed';
 import { Card } from '@/components/Card';
+import { Pill } from '@/components/Pill';
 import { MonthCalendar, dateKey } from '@/components/MonthCalendar';
 import { EditTransactionModal } from '@/components/EditTransactionModal';
 import { getCurrency, getCustomCategories, getTransactions } from '@/lib/storage';
 import { resolveCategoryIcon, resolveCategoryLabel } from '@/lib/categories';
-import { CurrencyCode, CustomCategory, Transaction } from '@/lib/types';
+import {
+  CurrencyCode,
+  CustomCategory,
+  Transaction,
+  expensesOnly,
+  incomeOnly,
+  isIncome,
+  sumAmount,
+} from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { LOCALE_MAP } from '@/lib/i18n/dictionaries';
@@ -29,10 +38,14 @@ export default function HistoryScreen() {
   const [selectedKey, setSelectedKey] = useState<string>(() => dateKey(new Date()));
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [monthLockedNotice, setMonthLockedNotice] = useState(false);
+  const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [wholeMonth, setWholeMonth] = useState(false);
 
   const subtle = useThemeColor({}, 'subtle');
   const tint = useThemeColor({}, 'tint');
   const border = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
   const accent = useThemeColor({}, 'accent');
   const accentSoft = useThemeColor({}, 'accentSoft');
 
@@ -79,15 +92,57 @@ export default function HistoryScreen() {
     [transactions, monthDate]
   );
 
-  const monthTotal = monthTransactions.reduce((s, tx) => s + tx.amount, 0);
+  const monthTotal = sumAmount(expensesOnly(monthTransactions));
+  const monthIncome = sumAmount(incomeOnly(monthTransactions));
+  const monthNet = monthIncome - monthTotal;
 
-  const dayTransactions = useMemo(
+  /** Categories actually present this month, so the filter never offers an empty option. */
+  const monthCategories = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const tx of monthTransactions) {
+      if (!seen.has(tx.category)) seen.set(tx.category, resolveCategoryLabel(tx.category, customCategories, t));
+    }
+    return [...seen.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [monthTransactions, customCategories, t]);
+
+  const trimmedQuery = query.trim().toLowerCase();
+
+  /**
+   * A search or category filter is inherently cross-day, so an active filter switches the list
+   * to the whole month - otherwise a match on another day would look like "nothing found".
+   */
+  const showWholeMonth = wholeMonth || trimmedQuery !== '' || categoryFilter !== null;
+
+  const matchesQuery = useCallback(
+    (tx: Transaction) => {
+      if (!trimmedQuery) return true;
+      const label = resolveCategoryLabel(tx.category, customCategories, t).toLowerCase();
+      return (
+        label.includes(trimmedQuery) ||
+        (tx.place ?? '').toLowerCase().includes(trimmedQuery) ||
+        (tx.note ?? '').toLowerCase().includes(trimmedQuery)
+      );
+    },
+    [trimmedQuery, customCategories, t]
+  );
+
+  const visibleTransactions = useMemo(
     () =>
       monthTransactions
-        .filter((tx) => dateKey(new Date(tx.createdAt)) === selectedKey)
+        .filter((tx) => (showWholeMonth ? true : dateKey(new Date(tx.createdAt)) === selectedKey))
+        .filter((tx) => (categoryFilter ? tx.category === categoryFilter : true))
+        .filter(matchesQuery)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [monthTransactions, selectedKey]
+    [monthTransactions, showWholeMonth, selectedKey, categoryFilter, matchesQuery]
   );
+
+  const visibleSpend = sumAmount(expensesOnly(visibleTransactions));
+  const hasFilters = trimmedQuery !== '' || categoryFilter !== null;
+
+  const clearFilters = () => {
+    setQuery('');
+    setCategoryFilter(null);
+  };
 
   const goPrevMonth = () => {
     if (!isPremium) {
@@ -133,6 +188,15 @@ export default function HistoryScreen() {
         <Text style={[styles.monthTotal, { color: subtle }]}>
           {t('history.monthTotal', { month: monthLabel, amount: formatMoney(monthTotal, currency) })}
         </Text>
+        {monthIncome > 0 && (
+          <Text style={[styles.monthTotal, { color: subtle, marginTop: -10 }]}>
+            {t('history.monthIncome', { amount: formatMoney(monthIncome, currency) })}
+            {'  ·  '}
+            <Text style={{ color: monthNet >= 0 ? tint : accent, fontWeight: '700' }}>
+              {t('history.monthNet', { amount: formatMoney(monthNet, currency) })}
+            </Text>
+          </Text>
+        )}
 
         {monthLockedNotice && (
           <View style={[styles.infoBanner, { borderColor: accent, backgroundColor: accentSoft }]}>
@@ -168,16 +232,86 @@ export default function HistoryScreen() {
       </Card>
 
       <Card>
-        {dayTransactions.length === 0 ? (
-          <Text style={[styles.emptyText, { color: subtle }]}>{t('history.noTransactionsForDay')}</Text>
+        <View style={[styles.searchBox, { borderColor: border }]}>
+          <Ionicons name="search" size={16} color={subtle} />
+          <TextInput
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder={t('history.searchPlaceholder')}
+            placeholderTextColor={subtle}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {hasFilters && (
+            <Pressable onPress={clearFilters} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('history.searchClear')}>
+              <Ionicons name="close-circle" size={17} color={subtle} />
+            </Pressable>
+          )}
+        </View>
+
+        {monthCategories.length > 1 && (
+          <View style={styles.filterRow}>
+            <Pill label={t('history.filterAll')} active={categoryFilter === null} onPress={() => setCategoryFilter(null)} />
+            {monthCategories.map((cat) => (
+              <Pill
+                key={cat.id}
+                label={cat.label}
+                icon={resolveCategoryIcon(cat.id, customCategories) as keyof typeof Ionicons.glyphMap}
+                active={categoryFilter === cat.id}
+                onPress={() => setCategoryFilter(categoryFilter === cat.id ? null : cat.id)}
+              />
+            ))}
+          </View>
+        )}
+
+        <View style={[styles.viewTrack, { borderColor: border }]}>
+          {[
+            { key: false, labelKey: 'history.viewByDay' },
+            { key: true, labelKey: 'history.viewWholeMonth' },
+          ].map((option) => {
+            const active = showWholeMonth === option.key;
+            return (
+              <Pressable
+                key={String(option.key)}
+                style={[styles.viewSegment, active && { backgroundColor: accentSoft }]}
+                onPress={() => {
+                  setWholeMonth(option.key);
+                  if (!option.key) clearFilters(); // going back to day view drops the cross-day filters
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}>
+                <Text style={[styles.viewSegmentText, { color: active ? accent : subtle }]} numberOfLines={1}>
+                  {t(option.labelKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {hasFilters && (
+          <Text style={[styles.resultsLine, { color: subtle }]}>
+            {t('history.resultsCount', { count: visibleTransactions.length, amount: formatMoney(visibleSpend, currency) })}
+          </Text>
+        )}
+      </Card>
+
+      <Card>
+        {visibleTransactions.length === 0 ? (
+          <Text style={[styles.emptyText, { color: subtle }]}>
+            {hasFilters ? t('history.noResults') : t('history.noTransactionsForDay')}
+          </Text>
         ) : (
-          dayTransactions.map((tx, i) => {
+          visibleTransactions.map((tx, i) => {
             const label = resolveCategoryLabel(tx.category, customCategories, t);
             const icon = resolveCategoryIcon(tx.category, customCategories);
-            const time = new Date(tx.createdAt).toLocaleTimeString(LOCALE_MAP[language] ?? 'en-US', {
+            const txDate = new Date(tx.createdAt);
+            const time = txDate.toLocaleTimeString(LOCALE_MAP[language] ?? 'en-US', {
               hour: '2-digit',
               minute: '2-digit',
             });
+            const dayMonth = `${txDate.getDate()}.${txDate.getMonth() + 1}`;
             return (
               <Pressable
                 key={tx.id}
@@ -189,11 +323,19 @@ export default function HistoryScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.txLabel}>{label}</Text>
                   <Text style={[styles.txSub, { color: subtle }]}>
-                    {time}
+                    {showWholeMonth ? `${dayMonth} · ${time}` : time}
                     {tx.place ? ` · ${tx.place}` : ''}
                   </Text>
+                  {tx.note ? (
+                    <Text style={[styles.txNote, { color: subtle }]} numberOfLines={2}>
+                      {tx.note}
+                    </Text>
+                  ) : null}
                 </View>
-                <Text style={styles.txAmount}>{formatMoney(tx.amount, currency)}</Text>
+                <Text style={[styles.txAmount, isIncome(tx) && { color: tint }]}>
+                  {isIncome(tx) ? '+' : ''}
+                  {formatMoney(tx.amount, currency)}
+                </Text>
                 <Ionicons name="chevron-forward" size={16} color={subtle} style={{ marginLeft: 4 }} />
               </Pressable>
             );
@@ -272,6 +414,55 @@ const styles = StyleSheet.create({
   txAmount: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  txNote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  viewTrack: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+    marginTop: 12,
+  },
+  viewSegment: {
+    flex: 1,
+    borderRadius: 9,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewSegmentText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  resultsLine: {
+    fontSize: 12,
+    marginTop: 10,
+    textAlign: 'center',
   },
   infoBanner: {
     flexDirection: 'row',

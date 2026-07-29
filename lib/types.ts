@@ -61,13 +61,55 @@ export const CURRENCY_META: Record<CurrencyCode, { symbol: string; labelKey: str
   GBP: { symbol: '£', labelKey: 'currencies.GBP', symbolBefore: true },
 };
 
+export type TransactionType = 'expense' | 'income';
+
 export interface Transaction {
   id: string;
   amount: number;
   category: Category;
+  /**
+   * Absent means 'expense'. Kept optional so transactions saved before income
+   * tracking existed keep counting as spending without a data migration.
+   */
+  type?: TransactionType;
   place?: string;
   note?: string;
   createdAt: string; // ISO timestamp
+}
+
+/** Income categories are separate from spending categories - a salary isn't a "food" entry. */
+export const INCOME_CATEGORIES: Category[] = ['salary', 'freelance', 'gift', 'otherIncome'];
+
+export const INCOME_CATEGORY_META: Record<string, { labelKey: string; icon: string; color: string }> = {
+  salary: { labelKey: 'incomeCategories.salary', icon: 'briefcase-outline', color: '#4CAF93' },
+  freelance: { labelKey: 'incomeCategories.freelance', icon: 'laptop-outline', color: '#5B8DEF' },
+  gift: { labelKey: 'incomeCategories.gift', icon: 'gift-outline', color: '#E86E9E' },
+  otherIncome: { labelKey: 'incomeCategories.otherIncome', icon: 'wallet-outline', color: '#9AA5B1' },
+};
+
+export function isIncome(tx: Transaction): boolean {
+  return tx.type === 'income';
+}
+
+export function isExpense(tx: Transaction): boolean {
+  return tx.type !== 'income';
+}
+
+/**
+ * Strips income out of a transaction list. Every spend calculation (budgets, heat map,
+ * trends, recurring detection, coach) must go through this - income leaking into a
+ * spending total silently corrupts budgets and coach advice.
+ */
+export function expensesOnly(list: Transaction[]): Transaction[] {
+  return list.filter(isExpense);
+}
+
+export function incomeOnly(list: Transaction[]): Transaction[] {
+  return list.filter(isIncome);
+}
+
+export function sumAmount(list: Transaction[]): number {
+  return list.reduce((sum, t) => sum + t.amount, 0);
 }
 
 export interface Goal {

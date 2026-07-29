@@ -22,6 +22,9 @@ import {
   ProviderSettings,
   Transaction,
   WeeklyBudget,
+  expensesOnly,
+  incomeOnly,
+  sumAmount,
 } from './types';
 
 const KEYS = {
@@ -249,6 +252,7 @@ export async function addTransaction(tx: Omit<Transaction, 'id' | 'createdAt'> &
     createdAt: tx.createdAt ?? new Date().toISOString(),
     amount: tx.amount,
     category: tx.category,
+    type: tx.type,
     place: tx.place,
     note: tx.note,
   };
@@ -259,7 +263,7 @@ export async function addTransaction(tx: Omit<Transaction, 'id' | 'createdAt'> &
 
 export async function updateTransaction(
   id: string,
-  patch: Partial<Pick<Transaction, 'amount' | 'category' | 'place' | 'note'>>
+  patch: Partial<Pick<Transaction, 'amount' | 'category' | 'type' | 'place' | 'note'>>
 ): Promise<Transaction[]> {
   const list = await getTransactions();
   const next = list.map((t) => (t.id === id ? { ...t, ...patch } : t));
@@ -392,10 +396,42 @@ export async function getWeeklySpendByCategory(): Promise<Record<string, number>
   const [txs, budget] = await Promise.all([getThisWeekTransactions(), getWeeklyBudget()]);
   const totals: Record<string, number> = {};
   for (const cat of Object.keys(budget)) totals[cat] = 0;
-  for (const t of txs) {
+  for (const t of expensesOnly(txs)) {
     totals[t.category] = (totals[t.category] ?? 0) + t.amount;
   }
   return totals;
+}
+
+/** Income minus expenses over the given window. Positive means you took in more than you spent. */
+export async function getBalanceBetween(start: Date, end: Date): Promise<{ income: number; spent: number; net: number }> {
+  const all = await getTransactions();
+  const inWindow = all.filter((t) => {
+    const d = new Date(t.createdAt);
+    return d >= start && d < end;
+  });
+  const income = sumAmount(incomeOnly(inWindow));
+  const spent = sumAmount(expensesOnly(inWindow));
+  return { income, spent, net: income - spent };
+}
+
+export async function getThisWeekBalance(): Promise<{ income: number; spent: number; net: number }> {
+  const { start, end } = getWeekWindow();
+  return getBalanceBetween(start, end);
+}
+
+/**
+ * Average weekly income over the trailing `weeks` window, used to show what share of income a
+ * suggested budget represents. Averages over the window length, so a single paycheque in an
+ * 8-week window reads as a low weekly average rather than a spike.
+ */
+export async function getAverageWeeklyIncome(weeks = 8): Promise<number> {
+  const start = new Date();
+  start.setDate(start.getDate() - weeks * 7);
+  // Deliberately open-ended rather than reusing getBalanceBetween: that helper's end bound is
+  // exclusive (correct for calendar windows), which would drop income logged this very moment.
+  const all = await getTransactions();
+  const income = sumAmount(incomeOnly(all).filter((t) => new Date(t.createdAt) >= start));
+  return income / weeks;
 }
 
 // ---------- custom categories ----------

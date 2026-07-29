@@ -1,4 +1,4 @@
-import { CATEGORIES, CATEGORY_META, CustomCategory } from './types';
+import { CATEGORIES, CATEGORY_META, INCOME_CATEGORIES, INCOME_CATEGORY_META, CustomCategory } from './types';
 import { translateAsync } from './i18n';
 
 export interface ResolvedCategory {
@@ -6,6 +6,24 @@ export interface ResolvedCategory {
   label: string;
   icon: string;
   color: string;
+}
+
+/**
+ * Built-in metadata for a category id, spending or income. Income ids are checked too so that
+ * history rows, recent lists, and coach text render an income entry's real label and icon
+ * instead of falling back to the raw id.
+ */
+function builtinMeta(categoryId: string): { labelKey: string; icon: string; color: string } | undefined {
+  return CATEGORY_META[categoryId] ?? INCOME_CATEGORY_META[categoryId];
+}
+
+export function getIncomeCategoriesResolved(t: (path: string) => string): ResolvedCategory[] {
+  return INCOME_CATEGORIES.map((id) => ({
+    id,
+    label: t(INCOME_CATEGORY_META[id].labelKey),
+    icon: INCOME_CATEGORY_META[id].icon,
+    color: INCOME_CATEGORY_META[id].color,
+  }));
 }
 
 export function getAllCategoriesResolved(
@@ -29,20 +47,20 @@ export function resolveCategoryLabel(
 ): string {
   const custom = customCategories.find((c) => c.id === categoryId);
   if (custom) return custom.label;
-  const meta = CATEGORY_META[categoryId];
+  const meta = builtinMeta(categoryId);
   return meta ? t(meta.labelKey) : categoryId;
 }
 
 export function resolveCategoryIcon(categoryId: string, customCategories: CustomCategory[]): string {
   const custom = customCategories.find((c) => c.id === categoryId);
   if (custom) return custom.icon;
-  return CATEGORY_META[categoryId]?.icon ?? 'ellipse-outline';
+  return builtinMeta(categoryId)?.icon ?? 'ellipse-outline';
 }
 
 /** Non-component variant for use outside React (AI prompt building). */
 export async function resolveCategoryLabelAsync(categoryId: string, customCategories: CustomCategory[]): Promise<string> {
   const custom = customCategories.find((c) => c.id === categoryId);
   if (custom) return custom.label;
-  const meta = CATEGORY_META[categoryId];
+  const meta = builtinMeta(categoryId);
   return meta ? translateAsync(meta.labelKey) : categoryId;
 }

@@ -1,4 +1,4 @@
-import { Transaction } from './types';
+import { Transaction, isExpense } from './types';
 
 export interface RecurringExpense {
   category: string;
@@ -35,6 +35,7 @@ export function detectRecurringExpenses(transactions: Transaction[], options: De
 
   const groups = new Map<string, Transaction[]>();
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // a monthly salary is not a subscription to cancel
     const key = `${t.category}::${(t.place ?? '').trim().toLowerCase()}`;
     const list = groups.get(key);
     if (list) list.push(t);

@@ -1,6 +1,6 @@
 import { buildHeatGrid, topHotSpots, describeHotSpot, currentWeekdayIndex, DAYPART_KEYS } from './heatmap';
 import { resolveCategoryLabelAsync } from './categories';
-import { Transaction } from './types';
+import { Transaction, expensesOnly } from './types';
 import {
   getTransactions,
   getWeeklyBudget,
@@ -151,8 +151,9 @@ async function buildGoalReply(): Promise<string> {
   });
 }
 
+/** Spend only - the week-over-week comparison is about how much went out, not net cash flow. */
 function sumInWindow(transactions: Transaction[], start: Date, end: Date): number {
-  return transactions.reduce((sum, t) => {
+  return expensesOnly(transactions).reduce((sum, t) => {
     const d = new Date(t.createdAt);
     return d >= start && d < end ? sum + t.amount : sum;
   }, 0);

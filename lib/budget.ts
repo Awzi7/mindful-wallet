@@ -1,4 +1,4 @@
-import { Transaction } from './types';
+import { Transaction, isExpense } from './types';
 
 /** Sums a record's values, but only over the given key set (ignores any extra keys the record might carry). */
 export function sumOverKeys(record: Record<string, number>, keys: string[]): number {
@@ -26,6 +26,7 @@ export function suggestWeeklyBudget(
 
   let oldestRelevantMs = now.getTime();
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // income must never inflate a spending limit
     const createdMs = new Date(t.createdAt).getTime();
     if (createdMs < windowStart.getTime() || !idSet.has(t.category)) continue;
     totals[t.category] += t.amount;

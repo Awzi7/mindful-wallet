@@ -1,4 +1,4 @@
-import { Transaction } from './types';
+import { Transaction, isExpense } from './types';
 
 export const DAYPART_KEYS = ['morning', 'day', 'evening', 'night'] as const;
 export const DAYPART_HINTS = ['6:00–11:00', '11:00–15:00', '15:00–19:00', '19:00–6:00'];
@@ -34,6 +34,7 @@ export function buildHeatGrid(transactions: Transaction[]): HeatCell[][] {
     }))
   );
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // the heat map shows where money goes out, not in
     const d = new Date(t.createdAt);
     const w = mondayIndex(d.getDay());
     const p = daypartIndex(d.getHours());

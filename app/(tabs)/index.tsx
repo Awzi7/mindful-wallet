@@ -57,7 +57,7 @@ import { formatMoney } from '@/lib/format';
 import { AIError } from '@/lib/ai';
 import { useI18n } from '@/lib/i18n';
 import { usePremium } from '@/lib/premium';
-import { CurrencyCode, CustomCategory, Goal, Transaction } from '@/lib/types';
+import { CurrencyCode, CustomCategory, Goal, Transaction, expensesOnly, sumAmount } from '@/lib/types';
 
 export default function HomeScreen() {
   const { t, tArray } = useI18n();
@@ -136,7 +136,7 @@ export default function HomeScreen() {
       setConfettiKey(Date.now());
     }
     achievementCount.current = gam.achievements.length;
-    setTodayTotal(todayTx.reduce((s, t) => s + t.amount, 0));
+    setTodayTotal(sumAmount(expensesOnly(todayTx)));
 
     const budgetKeys = Object.keys(budget);
     const weekBudgetSum = sumOverKeys(budget, budgetKeys);

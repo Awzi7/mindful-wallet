@@ -17,8 +17,17 @@ import { Pill } from '@/components/Pill';
 import { addCustomCategory, addPoints, addTransaction, getCurrency, getCustomCategories, getTransactions } from '@/lib/storage';
 import { getSpendingNudge } from '@/lib/coach';
 import { AIError } from '@/lib/ai';
-import { getAllCategoriesResolved, resolveCategoryIcon, resolveCategoryLabel } from '@/lib/categories';
-import { CURRENCY_META, CUSTOM_CATEGORY_COLOR_CHOICES, CUSTOM_CATEGORY_ICON_CHOICES, CurrencyCode, CustomCategory, Transaction } from '@/lib/types';
+import { getAllCategoriesResolved, getIncomeCategoriesResolved, resolveCategoryIcon, resolveCategoryLabel } from '@/lib/categories';
+import {
+  CURRENCY_META,
+  CUSTOM_CATEGORY_COLOR_CHOICES,
+  CUSTOM_CATEGORY_ICON_CHOICES,
+  CurrencyCode,
+  CustomCategory,
+  Transaction,
+  TransactionType,
+  isIncome,
+} from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { useI18n } from '@/lib/i18n';
 import { LOCALE_MAP } from '@/lib/i18n/dictionaries';
@@ -28,6 +37,7 @@ export default function AddExpenseScreen() {
   const { t, language } = useI18n();
   const { isPremium } = usePremium();
   const [amount, setAmount] = useState('');
+  const [txType, setTxType] = useState<TransactionType>('expense');
   const [category, setCategory] = useState('cafe');
   const [place, setPlace] = useState('');
   const [note, setNote] = useState('');
@@ -68,7 +78,8 @@ export default function AddExpenseScreen() {
     }, [refreshRecent])
   );
 
-  const allCategories = getAllCategoriesResolved(customCategories, t);
+  const incomeMode = txType === 'income';
+  const allCategories = incomeMode ? getIncomeCategoriesResolved(t) : getAllCategoriesResolved(customCategories, t);
   const amountNumber = Number(amount.replace(/[^0-9]/g, ''));
   const canSave = amountNumber > 0;
 
@@ -78,6 +89,18 @@ export default function AddExpenseScreen() {
     setNote('');
   };
 
+  /** Switching mode also swaps the category set, so a leftover 'cafe' can't be saved as income. */
+  const handleSwitchType = (next: TransactionType) => {
+    if (next === txType) return;
+    setTxType(next);
+    setCategory(next === 'income' ? 'salary' : 'cafe');
+    setAddingCategory(false);
+    setOneTimeCategory(null);
+    setSavedTx(null);
+    setNudge(null);
+    setNudgeError(null);
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -85,6 +108,7 @@ export default function AddExpenseScreen() {
     const tx = await addTransaction({
       amount: amountNumber,
       category,
+      type: txType,
       place: place.trim() || undefined,
       note: note.trim() || undefined,
     });
@@ -93,6 +117,14 @@ export default function AddExpenseScreen() {
     setSaving(false);
     resetForm();
     refreshRecent();
+
+    // The nudge weighs a purchase against the budget, which is meaningless for money coming in.
+    if (isIncome(tx)) {
+      setNudge(null);
+      setNudgeError(null);
+      setNudgeLoading(false);
+      return;
+    }
 
     setNudgeLoading(true);
     setNudgeError(null);
@@ -142,7 +174,29 @@ export default function AddExpenseScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <Card>
-        <Text style={styles.label}>{t('add.amountLabel', { symbol: CURRENCY_META[currency].symbol })}</Text>
+        <View style={[styles.typeTrack, { borderColor: border }]}>
+          {(['expense', 'income'] as TransactionType[]).map((option) => {
+            const active = txType === option;
+            return (
+              <Pressable
+                key={option}
+                style={[styles.typeSegment, active && { backgroundColor: accentSoft }]}
+                onPress={() => handleSwitchType(option)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}>
+                <Text style={[styles.typeSegmentText, { color: active ? accent : subtle }]} numberOfLines={1}>
+                  {t(option === 'income' ? 'add.typeIncome' : 'add.typeExpense')}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.label}>
+          {incomeMode
+            ? t('add.incomeAmountLabel', { symbol: CURRENCY_META[currency].symbol })
+            : t('add.amountLabel', { symbol: CURRENCY_META[currency].symbol })}
+        </Text>
         <TextInput
           style={[styles.amountInput, { borderColor: border, color: textColor }]}
           keyboardType="number-pad"
@@ -152,7 +206,7 @@ export default function AddExpenseScreen() {
           onChangeText={setAmount}
         />
 
-        <Text style={styles.label}>{t('add.categoryLabel')}</Text>
+        <Text style={styles.label}>{incomeMode ? t('add.incomeCategoryLabel') : t('add.categoryLabel')}</Text>
         <View style={styles.chipRow}>
           {pillCategories.map((cat) => (
             <Pill
@@ -165,7 +219,8 @@ export default function AddExpenseScreen() {
           ))}
         </View>
 
-        {!addingCategory ? (
+        {/* Custom categories are a spending concept; income uses its own fixed source list. */}
+        {incomeMode ? null : !addingCategory ? (
           <Pressable style={styles.addCategoryRow} onPress={() => setAddingCategory(true)}>
             <Text style={{ color: tint, fontWeight: '600', fontSize: 13 }}>{t('settings.addCategory')}</Text>
           </Pressable>
@@ -288,8 +343,14 @@ export default function AddExpenseScreen() {
           style={[styles.saveButton, { backgroundColor: canSave ? tint : border }]}
           onPress={handleSave}
           disabled={!canSave || saving}>
-          {saving ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>{t('add.saveButton')}</Text>}
+          {saving ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.saveButtonText}>{t(incomeMode ? 'add.saveIncomeButton' : 'add.saveButton')}</Text>
+          )}
         </Pressable>
+
+        {incomeMode && <Text style={[styles.hint, { color: subtle, marginTop: 10 }]}>{t('add.incomeHint')}</Text>}
       </Card>
 
       {savedTx && (
@@ -297,7 +358,8 @@ export default function AddExpenseScreen() {
           <Text style={styles.cardTitle}>
             {t('add.savedLine', { amount: formatMoney(savedTx.amount, currency), category: savedCategoryLabel })}
           </Text>
-          {nudgeLoading ? (
+          {/* No coach line for income - there is nothing to talk you out of. */}
+          {isIncome(savedTx) ? null : nudgeLoading ? (
             <ActivityIndicator style={{ marginVertical: 8 }} />
           ) : nudgeError ? (
             <Text style={[styles.smallText, { color: subtle }]}>{nudgeError}</Text>
@@ -338,8 +400,16 @@ export default function AddExpenseScreen() {
                     {time}
                     {tx.place ? ` · ${tx.place}` : ''}
                   </Text>
+                  {tx.note ? (
+                    <Text style={[styles.txNote, { color: subtle }]} numberOfLines={2}>
+                      {tx.note}
+                    </Text>
+                  ) : null}
                 </View>
-                <Text style={styles.txAmount}>{formatMoney(tx.amount, currency)}</Text>
+                <Text style={[styles.txAmount, isIncome(tx) && { color: tint }]}>
+                  {isIncome(tx) ? '+' : ''}
+                  {formatMoney(tx.amount, currency)}
+                </Text>
               </View>
             );
           })}
@@ -519,6 +589,30 @@ const styles = StyleSheet.create({
   },
   txAmount: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  txNote: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  typeTrack: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+    marginBottom: 4,
+  },
+  typeSegment: {
+    flex: 1,
+    borderRadius: 9,
+    paddingVertical: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeSegmentText: {
+    fontSize: 13,
     fontWeight: '700',
   },
 });

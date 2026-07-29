@@ -1,4 +1,4 @@
-import { Transaction } from './types';
+import { Transaction, isExpense } from './types';
 import { getSyncLanguage } from './i18n/current';
 import { LOCALE_MAP } from './i18n/dictionaries';
 
@@ -14,6 +14,7 @@ export function getDailySpendSeries(transactions: Transaction[], weekdayLabels: 
   const totalsByDate = new Map<string, number>();
 
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // spend trend, so income is excluded
     const d = new Date(t.createdAt);
     const key = toDateKey(d);
     totalsByDate.set(key, (totalsByDate.get(key) ?? 0) + t.amount);
@@ -55,6 +56,7 @@ export function getWeeklySpendSeries(transactions: Transaction[], weeks = 26): D
   const totalsByWeekStart = new Map<string, number>();
 
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // spend trend, so income is excluded
     const key = toDateKey(mondayOf(new Date(t.createdAt)));
     totalsByWeekStart.set(key, (totalsByWeekStart.get(key) ?? 0) + t.amount);
   }
@@ -84,6 +86,7 @@ export function getMonthlySpendSeries(transactions: Transaction[], months = 12):
   const totalsByMonthStart = new Map<string, number>();
 
   for (const t of transactions) {
+    if (!isExpense(t)) continue; // spend trend, so income is excluded
     const d = new Date(t.createdAt);
     const key = toDateKey(new Date(d.getFullYear(), d.getMonth(), 1));
     totalsByMonthStart.set(key, (totalsByMonthStart.get(key) ?? 0) + t.amount);
