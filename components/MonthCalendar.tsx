@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useThemeColor } from './Themed';
-import { Transaction } from '@/lib/types';
+import { Transaction, isExpense } from '@/lib/types';
 
 export function dateKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -57,8 +57,12 @@ export function MonthCalendar({
   const border = useThemeColor({}, 'border');
   const ink = useThemeColor({}, 'text');
 
+  // Spend only: the day cells are a spending heat map, so a payday must not paint itself as
+  // the month's biggest "spending" day (and must not inflate maxTotal, which would wash out
+  // every real spending day by comparison).
   const totalsByDay = new Map<string, number>();
   for (const tx of transactions) {
+    if (!isExpense(tx)) continue;
     const d = new Date(tx.createdAt);
     if (d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth()) {
       const key = dateKey(d);

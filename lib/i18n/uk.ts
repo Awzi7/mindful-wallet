@@ -272,7 +272,7 @@ export default {
     viewByDay: 'За днями',
     viewWholeMonth: 'Увесь місяць',
     noResults: 'Нічого не знайдено. Спробуйте інший запит або категорію.',
-    resultsCount: 'Знайдено: {{count}} · {{amount}}',
+    resultsCount: 'Знайдено: {{count}} · витрат на {{amount}}',
     monthIncome: 'Дохід: {{amount}}',
     monthNet: 'Баланс: {{amount}}',
   },

@@ -272,7 +272,7 @@ export default {
     viewByDay: 'По дням',
     viewWholeMonth: 'Весь месяц',
     noResults: 'Ничего не нашлось. Попробуйте другой запрос или категорию.',
-    resultsCount: 'Найдено: {{count}} · {{amount}}',
+    resultsCount: 'Найдено: {{count}} · трат на {{amount}}',
     monthIncome: 'Доход: {{amount}}',
     monthNet: 'Баланс: {{amount}}',
   },

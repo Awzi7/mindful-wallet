@@ -145,6 +145,21 @@ export default function HistoryScreen() {
     setCategoryFilter(null);
   };
 
+  /**
+   * Landing on another month with no day selected used to show an empty list reading "no
+   * transactions that day" while the toggle still claimed "by day". Show the month instead;
+   * tapping a specific day switches back to the day view.
+   */
+  const openMonthOverview = () => {
+    setSelectedKey('');
+    setWholeMonth(true);
+  };
+
+  const handleSelectDate = (key: string) => {
+    setSelectedKey(key);
+    setWholeMonth(false);
+  };
+
   const goPrevMonth = () => {
     if (!isPremium) {
       setMonthLockedNotice(true);
@@ -152,14 +167,14 @@ export default function HistoryScreen() {
     }
     const prev = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
     setMonthDate(prev);
-    setSelectedKey('');
+    openMonthOverview();
   };
 
   const goNextMonth = () => {
     if (isCurrentRealMonth) return;
     const next = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
     setMonthDate(next);
-    setSelectedKey('');
+    openMonthOverview();
   };
 
   return (
@@ -186,11 +201,11 @@ export default function HistoryScreen() {
             <Ionicons name="chevron-forward" size={18} color={accent} />
           </Pressable>
         </View>
-        <Text style={[styles.monthTotal, { color: subtle }]}>
+        <Text style={[styles.monthTotal, { color: subtle }, monthIncome > 0 && styles.monthTotalWithIncome]}>
           {t('history.monthTotal', { month: monthLabel, amount: formatMoney(monthTotal, currency) })}
         </Text>
         {monthIncome > 0 && (
-          <Text style={[styles.monthTotal, { color: subtle, marginTop: -10 }]}>
+          <Text style={[styles.monthTotal, { color: subtle }]}>
             {t('history.monthIncome', { amount: formatMoney(monthIncome, currency) })}
             {'  ·  '}
             <Text style={{ color: monthNet >= 0 ? positive : accent, fontWeight: '700' }}>
@@ -226,7 +241,7 @@ export default function HistoryScreen() {
           monthDate={monthDate}
           transactions={monthTransactions}
           selectedKey={selectedKey}
-          onSelectDate={setSelectedKey}
+          onSelectDate={handleSelectDate}
           weekdayLabels={weekdayLabels}
         />
         <Text style={[styles.hint, { color: subtle }]}>{t('history.selectDayHint')}</Text>
@@ -318,8 +333,12 @@ export default function HistoryScreen() {
                 key={tx.id}
                 onPress={() => setEditingTx(tx)}
                 style={[styles.txRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: border }]}>
-                <View style={[styles.txIcon, { backgroundColor: accentSoft }]}>
-                  <Ionicons name={icon as keyof typeof Ionicons.glyphMap} size={16} color={accent} />
+                <View style={[styles.txIcon, { backgroundColor: isIncome(tx) ? `${positive}22` : accentSoft }]}>
+                  <Ionicons
+                    name={icon as keyof typeof Ionicons.glyphMap}
+                    size={16}
+                    color={isIncome(tx) ? positive : accent}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.txLabel}>{label}</Text>
@@ -380,6 +399,10 @@ const styles = StyleSheet.create({
   monthTotal: {
     fontSize: 12,
     marginBottom: 14,
+  },
+  /** Tightened so the spend line and the income/balance line read as one block. */
+  monthTotalWithIncome: {
+    marginBottom: 4,
   },
   hint: {
     fontSize: 11,

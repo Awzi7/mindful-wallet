@@ -272,7 +272,7 @@ export default {
     viewByDay: 'By day',
     viewWholeMonth: 'Whole month',
     noResults: 'Nothing found. Try a different search or category.',
-    resultsCount: 'Found: {{count}} · {{amount}}',
+    resultsCount: 'Found: {{count}} · {{amount}} spent',
     monthIncome: 'Income: {{amount}}',
     monthNet: 'Balance: {{amount}}',
   },

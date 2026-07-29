@@ -96,6 +96,23 @@ describe('income never counts as spending', () => {
   });
 });
 
+describe('spend-only totals used by the calendar heat map', () => {
+  // Regression guard for a leak that shipped briefly: MonthCalendar summed every transaction,
+  // so a payday painted itself as the month's darkest "spending" day and inflated the scale.
+  it('sums only expenses per day', () => {
+    const day = '2026-07-15T12:00:00.000Z';
+    const list = [
+      tx(day, 40, 'food', 'expense'),
+      tx(day, 10, 'cafe'),
+      tx(day, 9000, 'salary', 'income'),
+    ];
+
+    const perDay = sumAmount(expensesOnly(list));
+
+    expect(perDay).toBe(50);
+  });
+});
+
 describe('balance reporting', () => {
   it('reports income, spend, and net for the current week', async () => {
     await addTransaction({ amount: 200, category: 'food', type: 'expense' });
