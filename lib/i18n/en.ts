@@ -75,6 +75,8 @@ export default {
     saveAsPermanentLabel: 'Save as a permanent category',
     oneTimeCategoryHint: "If unchecked, this category is used just for this expense and won't be saved to your category list.",
     recentTitle: 'Recent expenses',
+    recentIncomeTitle: 'Recent income',
+    addIncomeSource: '+ Custom source',
     viewAllHistory: 'Full history',
   },
   coach: {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -26,6 +26,8 @@ import {
   CustomCategory,
   Transaction,
   TransactionType,
+  expensesOnly,
+  incomeOnly,
   isIncome,
 } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
@@ -43,7 +45,7 @@ export default function AddExpenseScreen() {
   const [note, setNote] = useState('');
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
-  const [recentTxs, setRecentTxs] = useState<Transaction[]>([]);
+  const [allTxs, setAllTxs] = useState<Transaction[]>([]);
 
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState('');
@@ -68,7 +70,7 @@ export default function AddExpenseScreen() {
   const positive = useThemeColor({}, 'positive');
 
   const refreshRecent = useCallback(() => {
-    getTransactions().then((list) => setRecentTxs(list.slice(0, 3)));
+    getTransactions().then(setAllTxs);
   }, []);
 
   useFocusEffect(
@@ -80,8 +82,16 @@ export default function AddExpenseScreen() {
   );
 
   const incomeMode = txType === 'income';
-  const allCategories = incomeMode ? getIncomeCategoriesResolved(t) : getAllCategoriesResolved(customCategories, t);
+  const allCategories = incomeMode
+    ? getIncomeCategoriesResolved(t, customCategories)
+    : getAllCategoriesResolved(customCategories, t);
   const amountNumber = Number(amount.replace(/[^0-9]/g, ''));
+
+  /** Matches the mode being logged - showing recent expenses while logging income is just noise. */
+  const recentTxs = useMemo(
+    () => (incomeMode ? incomeOnly(allTxs) : expensesOnly(allTxs)).slice(0, 3),
+    [allTxs, incomeMode]
+  );
   const canSave = amountNumber > 0;
 
   const resetForm = () => {
@@ -148,7 +158,12 @@ export default function AddExpenseScreen() {
         setCategoryLimitNotice(true);
         return;
       }
-      const next = await addCustomCategory({ label, icon: newCategoryIcon, color: newCategoryColor });
+      const next = await addCustomCategory({
+        label,
+        icon: newCategoryIcon,
+        color: newCategoryColor,
+        kind: txType,
+      });
       setCustomCategories(next);
       setCategory(next[next.length - 1].id);
       setOneTimeCategory(null);
@@ -220,10 +235,13 @@ export default function AddExpenseScreen() {
           ))}
         </View>
 
-        {/* Custom categories are a spending concept; income uses its own fixed source list. */}
-        {incomeMode ? null : !addingCategory ? (
+        {/* Works in both modes: the new category is tagged with the current type, so a custom
+            income source never shows up in the spending picker and vice versa. */}
+        {!addingCategory ? (
           <Pressable style={styles.addCategoryRow} onPress={() => setAddingCategory(true)}>
-            <Text style={{ color: tint, fontWeight: '600', fontSize: 13 }}>{t('settings.addCategory')}</Text>
+            <Text style={{ color: tint, fontWeight: '600', fontSize: 13 }}>
+              {t(incomeMode ? 'add.addIncomeSource' : 'settings.addCategory')}
+            </Text>
           </Pressable>
         ) : (
           <View style={styles.newCategoryBox}>
@@ -373,7 +391,7 @@ export default function AddExpenseScreen() {
       {recentTxs.length > 0 && (
         <Card>
           <View style={styles.recentHeaderRow}>
-            <Text style={styles.cardTitle}>{t('add.recentTitle')}</Text>
+            <Text style={styles.cardTitle}>{t(incomeMode ? 'add.recentIncomeTitle' : 'add.recentTitle')}</Text>
             <Pressable onPress={() => router.push('/(tabs)/history')} accessibilityRole="button" accessibilityLabel={t('add.viewAllHistory')}>
               <View style={styles.viewAllRow}>
                 <Text style={{ color: tint, fontSize: 13, fontWeight: '600' }}>{t('add.viewAllHistory')}</Text>

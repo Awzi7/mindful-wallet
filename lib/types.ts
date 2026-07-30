@@ -23,6 +23,20 @@ export interface CustomCategory {
   label: string;
   icon: string;
   color: string;
+  /**
+   * Absent means 'expense'. Kept optional so categories created before income sources existed
+   * keep behaving as spending categories without a data migration.
+   */
+  kind?: TransactionType;
+}
+
+export function isIncomeCategory(cat: CustomCategory): boolean {
+  return cat.kind === 'income';
+}
+
+/** Custom categories of one kind. Mixing them would offer "Salary" as a place to spend money. */
+export function customCategoriesOfKind(list: CustomCategory[], kind: TransactionType): CustomCategory[] {
+  return list.filter((c) => (c.kind ?? 'expense') === kind);
 }
 
 export const CUSTOM_CATEGORY_ICON_CHOICES = [

@@ -1,4 +1,11 @@
-import { CATEGORIES, CATEGORY_META, INCOME_CATEGORIES, INCOME_CATEGORY_META, CustomCategory } from './types';
+import {
+  CATEGORIES,
+  CATEGORY_META,
+  INCOME_CATEGORIES,
+  INCOME_CATEGORY_META,
+  CustomCategory,
+  customCategoriesOfKind,
+} from './types';
 import { translateAsync } from './i18n';
 
 export interface ResolvedCategory {
@@ -17,15 +24,26 @@ function builtinMeta(categoryId: string): { labelKey: string; icon: string; colo
   return CATEGORY_META[categoryId] ?? INCOME_CATEGORY_META[categoryId];
 }
 
-export function getIncomeCategoriesResolved(t: (path: string) => string): ResolvedCategory[] {
-  return INCOME_CATEGORIES.map((id) => ({
+export function getIncomeCategoriesResolved(
+  t: (path: string) => string,
+  customCategories: CustomCategory[] = []
+): ResolvedCategory[] {
+  const builtins = INCOME_CATEGORIES.map((id) => ({
     id,
     label: t(INCOME_CATEGORY_META[id].labelKey),
     icon: INCOME_CATEGORY_META[id].icon,
     color: INCOME_CATEGORY_META[id].color,
   }));
+  const customs = customCategoriesOfKind(customCategories, 'income').map((c) => ({
+    id: c.id,
+    label: c.label,
+    icon: c.icon,
+    color: c.color,
+  }));
+  return [...builtins, ...customs];
 }
 
+/** Spending categories only - a custom income source must never be offered as a place to spend. */
 export function getAllCategoriesResolved(
   customCategories: CustomCategory[],
   t: (path: string) => string
@@ -36,7 +54,12 @@ export function getAllCategoriesResolved(
     icon: CATEGORY_META[id].icon,
     color: CATEGORY_META[id].color,
   }));
-  const customs = customCategories.map((c) => ({ id: c.id, label: c.label, icon: c.icon, color: c.color }));
+  const customs = customCategoriesOfKind(customCategories, 'expense').map((c) => ({
+    id: c.id,
+    label: c.label,
+    icon: c.icon,
+    color: c.color,
+  }));
   return [...builtins, ...customs];
 }
 

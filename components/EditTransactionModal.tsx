@@ -54,7 +54,9 @@ export function EditTransactionModal({
   // An income entry must keep choosing from income sources - offering 'cafe' here would let a
   // saved income row carry a spending category.
   const incomeMode = isIncome(transaction);
-  const allCategories = incomeMode ? getIncomeCategoriesResolved(t) : getAllCategoriesResolved(customCategories, t);
+  const allCategories = incomeMode
+    ? getIncomeCategoriesResolved(t, customCategories)
+    : getAllCategoriesResolved(customCategories, t);
   const amountNumber = Number(amount.replace(/[^0-9]/g, ''));
   const canSave = amountNumber > 0;
 

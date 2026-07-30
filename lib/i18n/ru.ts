@@ -75,6 +75,8 @@ export default {
     saveAsPermanentLabel: 'Сохранить как постоянную категорию',
     oneTimeCategoryHint: 'Если не отмечено — категория будет использована только для этой траты и не сохранится в списке категорий.',
     recentTitle: 'Последние траты',
+    recentIncomeTitle: 'Последние доходы',
+    addIncomeSource: '+ Свой источник',
     viewAllHistory: 'Вся история',
   },
   coach: {

@@ -25,6 +25,7 @@ import {
   BudgetPeriod,
   expensesOnly,
   incomeOnly,
+  isIncomeCategory,
   sumAmount,
 } from './types';
 
@@ -533,9 +534,13 @@ export async function addCustomCategory(cat: Omit<CustomCategory, 'id'>): Promis
   const next = [...list, item];
   await setJSON(KEYS.customCategories, next);
 
-  const budget = await getWeeklyBudget();
-  if (!(item.id in budget)) {
-    await setWeeklyBudget({ ...budget, [item.id]: DEFAULT_CUSTOM_CATEGORY_BUDGET });
+  // Only spending categories get a limit. An income source has nothing to cap, and giving it a
+  // budget entry would make it show up on the limits screen and in spend-vs-budget totals.
+  if (!isIncomeCategory(item)) {
+    const budget = await getWeeklyBudget();
+    if (!(item.id in budget)) {
+      await setWeeklyBudget({ ...budget, [item.id]: DEFAULT_CUSTOM_CATEGORY_BUDGET });
+    }
   }
   return next;
 }
