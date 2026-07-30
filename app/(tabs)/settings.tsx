@@ -22,6 +22,8 @@ import { Pill } from '@/components/Pill';
 import { AvatarPicker } from '@/components/AvatarPicker';
 import {
   exportAllData,
+  getTransactions,
+  getCustomCategories,
   getActiveProvider,
   getAppLockEnabled,
   getCurrency,
@@ -39,6 +41,8 @@ import {
 } from '@/lib/storage';
 import { testProviderConnection, AIError } from '@/lib/ai';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL, openLegalUrl } from '@/lib/legal';
+import { transactionsToCsv } from '@/lib/csv';
+import { resolveCategoryLabel } from '@/lib/categories';
 import {
   ActiveAIOption,
   CURRENCIES,
@@ -63,7 +67,7 @@ const THEME_OPTIONS: { value: ThemePreference; labelKey: string }[] = [
 ];
 
 export default function SettingsScreen() {
-  const { t, language, setLanguage } = useI18n();
+  const { t, tArray, language, setLanguage } = useI18n();
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { isPremium, reset: resetPremium } = usePremium();
   const [activeProvider, setActiveProviderState] = useState<ActiveAIOption>(LOCAL_COACH_ID);
@@ -81,6 +85,7 @@ export default function SettingsScreen() {
   const [currency, setCurrencyState] = useState<CurrencyCode>('USD');
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [importing, setImporting] = useState(false);
   const [pendingImportJson, setPendingImportJson] = useState<string | null>(null);
   const [backupNotice, setBackupNotice] = useState<{ tone: 'error' | 'success'; title: string; body: string } | null>(null);
@@ -185,35 +190,62 @@ export default function SettingsScreen() {
     }
   };
 
+  /** Downloads on web, opens the share sheet on device. Shared by the JSON and CSV exports. */
+  const shareTextFile = async (content: string, filename: string, mimeType: string, dialogTitle: string) => {
+    if (Platform.OS === 'web') {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const file = new File(Paths.cache, filename);
+    if (file.exists) file.delete();
+    file.create();
+    file.write(content);
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(file.uri, { mimeType, dialogTitle });
+    }
+  };
+
   const handleExport = async () => {
     setExporting(true);
     setBackupNotice(null);
     try {
       const json = await exportAllData();
-      if (Platform.OS === 'web') {
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'mindful-wallet-backup.json';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } else {
-        const file = new File(Paths.cache, 'mindful-wallet-backup.json');
-        if (file.exists) file.delete();
-        file.create();
-        file.write(json);
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: t('settings.exportButton') });
-        }
-      }
+      await shareTextFile(json, 'mindful-wallet-backup.json', 'application/json', t('settings.exportButton'));
       setBackupNotice({ tone: 'success', title: t('settings.exportSuccessTitle'), body: t('settings.exportSuccessBody') });
     } catch {
       setBackupNotice({ tone: 'error', title: t('settings.exportErrorTitle'), body: t('settings.exportErrorBody') });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExportingCsv(true);
+    setBackupNotice(null);
+    try {
+      const [transactions, customCategories] = await Promise.all([getTransactions(), getCustomCategories()]);
+      const csv = transactionsToCsv(transactions, {
+        headers: tArray('settings.csvHeaders'),
+        expenseLabel: t('add.typeExpense'),
+        incomeLabel: t('add.typeIncome'),
+        categoryLabel: (id) => resolveCategoryLabel(id, customCategories, t),
+        currency,
+      });
+      // A BOM makes Excel read the file as UTF-8; without it Cyrillic labels arrive as mojibake.
+      await shareTextFile(`﻿${csv}`, 'mindful-wallet-transactions.csv', 'text/csv', t('settings.exportCsvButton'));
+      setBackupNotice({ tone: 'success', title: t('settings.exportSuccessTitle'), body: t('settings.exportCsvSuccessBody') });
+    } catch {
+      setBackupNotice({ tone: 'error', title: t('settings.exportErrorTitle'), body: t('settings.exportErrorBody') });
+    } finally {
+      setExportingCsv(false);
     }
   };
 
@@ -479,6 +511,20 @@ export default function SettingsScreen() {
             <Text style={{ color: subtle, fontWeight: '700' }}>{t('settings.importButton')}</Text>
           </Pressable>
         </View>
+
+        <View style={[styles.editRow, { marginTop: 10 }]}>
+          <Pressable
+            style={[styles.smallButton, { borderColor: border, borderWidth: 1 }]}
+            onPress={handleExportCsv}
+            disabled={exportingCsv}>
+            {exportingCsv ? (
+              <ActivityIndicator size="small" color={subtle} />
+            ) : (
+              <Text style={{ color: subtle, fontWeight: '700' }}>{t('settings.exportCsvButton')}</Text>
+            )}
+          </Pressable>
+        </View>
+        <Text style={[styles.hint, { color: subtle, marginTop: 8 }]}>{t('settings.exportCsvHint')}</Text>
 
         {pendingImportJson && (
           <View style={[styles.confirmBox, { borderColor: accent }]}>

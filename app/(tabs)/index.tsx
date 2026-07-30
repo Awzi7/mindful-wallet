@@ -22,6 +22,8 @@ import { HeatMapGrid } from '@/components/HeatMapGrid';
 import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { CategoryBreakdownChart } from '@/components/CategoryBreakdownChart';
 import { RecurringExpensesCard } from '@/components/RecurringExpensesCard';
+import { TopPlacesCard } from '@/components/TopPlacesCard';
+import { topPlaces } from '@/lib/places';
 import { detectRecurringExpenses } from '@/lib/recurring';
 import { DailyCheckInModal } from '@/components/DailyCheckInModal';
 import { HotspotPlacesCard } from '@/components/HotspotPlacesCard';
@@ -301,6 +303,7 @@ export default function HomeScreen() {
   const goalPct = goal && goal.targetAmount > 0 ? Math.min(100, (goal.savedAmount / goal.targetAmount) * 100) : 0;
   const weekdayLabels = tArray('heatmap.weekdays');
   const recurringItems = useMemo(() => detectRecurringExpenses(allTransactions), [allTransactions]);
+  const placeTotals = useMemo(() => topPlaces(allTransactions), [allTransactions]);
   const daypartLabels = DAYPART_KEYS.map((k) => t(`heatmap.${k}`));
 
   return (
@@ -458,6 +461,12 @@ export default function HomeScreen() {
         {recurringItems.length > 0 && (
           <Card>
             <RecurringExpensesCard items={recurringItems} customCategories={customCategories} currency={currency} />
+          </Card>
+        )}
+
+        {placeTotals.length > 0 && (
+          <Card>
+            <TopPlacesCard places={placeTotals} currency={currency} />
           </Card>
         )}
 
