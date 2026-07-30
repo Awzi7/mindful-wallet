@@ -41,6 +41,7 @@ export default function HistoryScreen() {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [wholeMonth, setWholeMonth] = useState(false);
+  const [searchAllHistory, setSearchAllHistory] = useState(false);
 
   const subtle = useThemeColor({}, 'subtle');
   const tint = useThemeColor({}, 'tint');
@@ -97,14 +98,21 @@ export default function HistoryScreen() {
   const monthIncome = sumAmount(incomeOnly(monthTransactions));
   const monthNet = monthIncome - monthTotal;
 
-  /** Categories actually present this month, so the filter never offers an empty option. */
-  const monthCategories = useMemo(() => {
+  /**
+   * What search and the category filter run over. Past months are a Premium feature, so
+   * all-history search is gated the same way - otherwise it would be a way to read months the
+   * month arrows refuse to open.
+   */
+  const searchPool = searchAllHistory ? transactions : monthTransactions;
+
+  /** Categories actually present in the current scope, so the filter never offers an empty option. */
+  const poolCategories = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const tx of monthTransactions) {
+    for (const tx of searchPool) {
       if (!seen.has(tx.category)) seen.set(tx.category, resolveCategoryLabel(tx.category, customCategories, t));
     }
     return [...seen.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label));
-  }, [monthTransactions, customCategories, t]);
+  }, [searchPool, customCategories, t]);
 
   const trimmedQuery = query.trim().toLowerCase();
 
@@ -121,20 +129,21 @@ export default function HistoryScreen() {
     [trimmedQuery, customCategories, t]
   );
 
-  /** Filters applied without any day restriction - the pool the current scope narrows down. */
-  const monthMatches = useMemo(
+  /** Filters applied without any day restriction - the pool the day scope narrows down. */
+  const scopedMatches = useMemo(
     () =>
-      monthTransactions
+      searchPool
         .filter((tx) => (categoryFilter ? tx.category === categoryFilter : true))
         .filter(matchesQuery)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [monthTransactions, categoryFilter, matchesQuery]
+    [searchPool, categoryFilter, matchesQuery]
   );
 
-  const visibleTransactions = useMemo(
-    () => (wholeMonth ? monthMatches : monthMatches.filter((tx) => dateKey(new Date(tx.createdAt)) === selectedKey)),
-    [monthMatches, wholeMonth, selectedKey]
-  );
+  const visibleTransactions = useMemo(() => {
+    // Across all history there is no single month to pick a day within, so the day scope is moot.
+    if (searchAllHistory || wholeMonth) return scopedMatches;
+    return scopedMatches.filter((tx) => dateKey(new Date(tx.createdAt)) === selectedKey);
+  }, [scopedMatches, searchAllHistory, wholeMonth, selectedKey]);
 
   const visibleSpend = sumAmount(expensesOnly(visibleTransactions));
   const hasFilters = trimmedQuery !== '' || categoryFilter !== null;
@@ -143,7 +152,8 @@ export default function HistoryScreen() {
    * Matches exist this month but not on the selected day. Rather than silently wiping the
    * user's query when they pick the day view, offer to widen the scope.
    */
-  const hiddenByDayScope = !wholeMonth && hasFilters && visibleTransactions.length === 0 && monthMatches.length > 0;
+  const hiddenByDayScope =
+    !searchAllHistory && !wholeMonth && hasFilters && visibleTransactions.length === 0 && scopedMatches.length > 0;
 
   const clearFilters = () => {
     setQuery('');
@@ -173,6 +183,19 @@ export default function HistoryScreen() {
   const handleQueryChange = (next: string) => {
     setQuery(next);
     if (next.trim() !== '' && !wholeMonth) setWholeMonth(true);
+  };
+
+  const toggleAllHistory = () => {
+    if (searchAllHistory) {
+      setSearchAllHistory(false);
+      return;
+    }
+    // Same gate as the month arrows: free users only get the current month.
+    if (!isPremium) {
+      setMonthLockedNotice(true);
+      return;
+    }
+    setSearchAllHistory(true);
   };
 
   const goPrevMonth = () => {
@@ -282,10 +305,26 @@ export default function HistoryScreen() {
           )}
         </View>
 
-        {monthCategories.length > 1 && (
+        <Pressable
+          style={[styles.scopeToggle, { borderColor: searchAllHistory ? tint : border }]}
+          onPress={toggleAllHistory}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: searchAllHistory }}>
+          <Ionicons
+            name={searchAllHistory ? 'checkbox-outline' : 'square-outline'}
+            size={16}
+            color={searchAllHistory ? tint : subtle}
+          />
+          <Text style={[styles.scopeToggleText, { color: searchAllHistory ? tint : subtle }]}>
+            {t('history.searchAllHistory')}
+          </Text>
+          {!isPremium && <Ionicons name="lock-closed" size={12} color={accent} />}
+        </Pressable>
+
+        {poolCategories.length > 1 && (
           <View style={styles.filterRow}>
             <Pill label={t('history.filterAll')} active={categoryFilter === null} onPress={() => setCategoryFilter(null)} />
-            {monthCategories.map((cat) => (
+            {poolCategories.map((cat) => (
               <Pill
                 key={cat.id}
                 label={cat.label}
@@ -297,6 +336,8 @@ export default function HistoryScreen() {
           </View>
         )}
 
+        {/* Day vs whole-month is meaningless once the scope spans every month. */}
+        {!searchAllHistory && (
         <View style={[styles.viewTrack, { borderColor: border }]}>
           {[
             { key: false, labelKey: 'history.viewByDay' },
@@ -317,6 +358,7 @@ export default function HistoryScreen() {
             );
           })}
         </View>
+        )}
 
         {hasFilters && (
           <Text style={[styles.resultsLine, { color: subtle }]}>
@@ -330,7 +372,7 @@ export default function HistoryScreen() {
           hiddenByDayScope ? (
             <View style={{ alignItems: 'center' }}>
               <Text style={[styles.emptyText, { color: subtle }]}>
-                {t('history.noResultsThisDay', { count: monthMatches.length })}
+                {t('history.noResultsThisDay', { count: scopedMatches.length })}
               </Text>
               <Pressable onPress={() => setWholeMonth(true)} accessibilityRole="button">
                 <Text style={[styles.infoBannerLink, { color: tint }]}>{t('history.showWholeMonth')}</Text>
@@ -350,7 +392,10 @@ export default function HistoryScreen() {
               hour: '2-digit',
               minute: '2-digit',
             });
-            const dayMonth = `${txDate.getDate()}.${txDate.getMonth() + 1}`;
+            // Across all history a bare "15.7" is ambiguous, so the year comes along.
+            const dayMonth = searchAllHistory
+              ? `${txDate.getDate()}.${txDate.getMonth() + 1}.${txDate.getFullYear()}`
+              : `${txDate.getDate()}.${txDate.getMonth() + 1}`;
             return (
               <Pressable
                 key={tx.id}
@@ -366,7 +411,7 @@ export default function HistoryScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.txLabel}>{label}</Text>
                   <Text style={[styles.txSub, { color: subtle }]}>
-                    {wholeMonth ? `${dayMonth} · ${time}` : time}
+                    {searchAllHistory || wholeMonth ? `${dayMonth} · ${time}` : time}
                     {tx.place ? ` · ${tx.place}` : ''}
                   </Text>
                   {tx.note ? (
@@ -480,6 +525,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     paddingVertical: 8,
+  },
+  scopeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 10,
+  },
+  scopeToggleText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
   },
   filterRow: {
     flexDirection: 'row',

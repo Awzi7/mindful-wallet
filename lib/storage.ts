@@ -22,6 +22,7 @@ import {
   ProviderSettings,
   Transaction,
   WeeklyBudget,
+  BudgetPeriod,
   expensesOnly,
   incomeOnly,
   sumAmount,
@@ -50,6 +51,7 @@ const KEYS = {
   notifications: '@mw/notifications',
   appLockEnabled: '@mw/appLockEnabled',
   weeklyRecapNotificationId: '@mw/weeklyRecapNotificationId',
+  budgetPeriod: '@mw/budgetPeriod',
 } as const;
 
 // expo-secure-store has no web implementation, so API keys fall back to AsyncStorage there.
@@ -321,9 +323,39 @@ export function getWeekWindow(reference = new Date()): { start: Date; end: Date 
   return { start, end };
 }
 
+export function getMonthWindow(reference = new Date()): { start: Date; end: Date } {
+  const start = new Date(reference.getFullYear(), reference.getMonth(), 1);
+  const end = new Date(reference.getFullYear(), reference.getMonth() + 1, 1);
+  return { start, end };
+}
+
+/** The window a budget is measured over, per the user's chosen period. */
+export function getPeriodWindow(period: BudgetPeriod, reference = new Date()): { start: Date; end: Date } {
+  return period === 'month' ? getMonthWindow(reference) : getWeekWindow(reference);
+}
+
+export async function getBudgetPeriod(): Promise<BudgetPeriod> {
+  const stored = await AsyncStorage.getItem(KEYS.budgetPeriod);
+  return stored === 'month' ? 'month' : 'week'; // week stays the default for existing users
+}
+
+export function setBudgetPeriod(period: BudgetPeriod): Promise<void> {
+  return AsyncStorage.setItem(KEYS.budgetPeriod, period);
+}
+
 export async function getThisWeekTransactions(): Promise<Transaction[]> {
   const all = await getTransactions();
   const { start, end } = getWeekWindow();
+  return all.filter((t) => {
+    const d = new Date(t.createdAt);
+    return d >= start && d < end;
+  });
+}
+
+/** Transactions inside the current budget period (week or month, per the setting). */
+export async function getCurrentPeriodTransactions(): Promise<Transaction[]> {
+  const [all, period] = await Promise.all([getTransactions(), getBudgetPeriod()]);
+  const { start, end } = getPeriodWindow(period);
   return all.filter((t) => {
     const d = new Date(t.createdAt);
     return d >= start && d < end;
@@ -434,8 +466,9 @@ export function setWeeklyBudget(budget: WeeklyBudget): Promise<void> {
   return setJSON(KEYS.budget, budget);
 }
 
-export async function getWeeklySpendByCategory(): Promise<Record<string, number>> {
-  const [txs, budget] = await Promise.all([getThisWeekTransactions(), getWeeklyBudget()]);
+/** Spend per category inside the current budget period (week or month, per the setting). */
+export async function getPeriodSpendByCategory(): Promise<Record<string, number>> {
+  const [txs, budget] = await Promise.all([getCurrentPeriodTransactions(), getWeeklyBudget()]);
   const totals: Record<string, number> = {};
   for (const cat of Object.keys(budget)) totals[cat] = 0;
   for (const t of expensesOnly(txs)) {
@@ -467,13 +500,23 @@ export async function getThisWeekBalance(): Promise<{ income: number; spent: num
  * 8-week window reads as a low weekly average rather than a spike.
  */
 export async function getAverageWeeklyIncome(weeks = 8): Promise<number> {
+  return getAveragePeriodIncome('week', weeks);
+}
+
+/**
+ * Average income per budget period. Comparing a monthly budget against average *weekly* income
+ * would overstate the share roughly fourfold, so the averaging window has to match the budget's
+ * period.
+ */
+export async function getAveragePeriodIncome(period: BudgetPeriod, periods = 8): Promise<number> {
+  const periodDays = period === 'month' ? 30 : 7;
   const start = new Date();
-  start.setDate(start.getDate() - weeks * 7);
+  start.setDate(start.getDate() - periods * periodDays);
   // Deliberately open-ended rather than reusing getBalanceBetween: that helper's end bound is
   // exclusive (correct for calendar windows), which would drop income logged this very moment.
   const all = await getTransactions();
   const income = sumAmount(incomeOnly(all).filter((t) => new Date(t.createdAt) >= start));
-  return income / weeks;
+  return income / periods;
 }
 
 // ---------- custom categories ----------

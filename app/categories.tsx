@@ -18,7 +18,9 @@ import {
   setWeeklyBudget,
 } from '@/lib/storage';
 import { getAllCategoriesResolved } from '@/lib/categories';
-import { suggestWeeklyBudget } from '@/lib/budget';
+import { suggestBudget } from '@/lib/budget';
+import { getAveragePeriodIncome, getBudgetPeriod, setBudgetPeriod } from '@/lib/storage';
+import { BUDGET_PERIODS, BudgetPeriod } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import {
   CURRENCY_META,
@@ -44,6 +46,7 @@ export default function CategoriesScreen() {
   const [categoryLimitNotice, setCategoryLimitNotice] = useState(false);
   const [suggestNotice, setSuggestNotice] = useState<string | null>(null);
   const [suggesting, setSuggesting] = useState(false);
+  const [budgetPeriod, setBudgetPeriodState] = useState<BudgetPeriod>('week');
 
   const border = useThemeColor({}, 'border');
   const subtle = useThemeColor({}, 'subtle');
@@ -58,8 +61,20 @@ export default function CategoriesScreen() {
       getWeeklyBudget().then(setBudget);
       getCurrency().then(setCurrency);
       getCustomCategories().then(setCustomCategories);
+      getBudgetPeriod().then(setBudgetPeriodState);
     }, [])
   );
+
+  /**
+   * Switching period keeps the stored limits as they are - they simply now mean "per month"
+   * instead of "per week". Rescaling them behind the user's back would quietly change what
+   * they had deliberately set.
+   */
+  const handleChangePeriod = async (period: BudgetPeriod) => {
+    setBudgetPeriodState(period);
+    setSuggestNotice(null);
+    await setBudgetPeriod(period);
+  };
 
   const allCategories = getAllCategoriesResolved(customCategories, t);
 
@@ -101,7 +116,7 @@ export default function CategoriesScreen() {
     setSuggestNotice(null);
     try {
       const transactions = await getTransactions();
-      const suggestion = suggestWeeklyBudget(transactions, allCategories.map((c) => c.id));
+      const suggestion = suggestBudget(transactions, allCategories.map((c) => c.id), budgetPeriod);
       if (Object.values(suggestion).every((v) => v === 0)) {
         setSuggestNotice(t('settings.suggestBudgetNoData'));
         return;
@@ -112,14 +127,16 @@ export default function CategoriesScreen() {
 
       // If income has been logged, say what share of it this budget represents. Purely
       // informational - the app deliberately does not tell anyone what they should spend.
-      const avgWeeklyIncome = await getAverageWeeklyIncome();
-      const budgetTotal = Object.values(next).reduce((s, v) => s + v, 0);
+      // Must be income per the *same* period as the budget, or the share is off by ~4x.
+      const avgIncome = await getAveragePeriodIncome(budgetPeriod);
+      const budgetTotal = Object.values(next).reduce((s: number, v: number) => s + v, 0);
       const share =
-        avgWeeklyIncome > 0
+        avgIncome > 0
           ? ' ' +
             t('settings.suggestBudgetIncomeShare', {
-              pct: Math.round((budgetTotal / avgWeeklyIncome) * 100),
-              income: formatMoney(Math.round(avgWeeklyIncome), currency),
+              pct: Math.round((budgetTotal / avgIncome) * 100),
+              income: formatMoney(Math.round(avgIncome), currency),
+              period: t(`budget.periodPer.${budgetPeriod}`),
             })
           : '';
       setSuggestNotice(t('settings.suggestBudgetApplied') + share);
@@ -142,8 +159,27 @@ export default function CategoriesScreen() {
           <Ionicons name="close" size={18} color={accent} />
         </Pressable>
 
-        <Text style={[styles.title, { marginTop: insets.top + 36 }]}>{t('settings.weeklyLimits')}</Text>
+        <Text style={[styles.title, { marginTop: insets.top + 36 }]}>{t('budget.limitsTitle')}</Text>
         <Text style={[styles.subtitle, { color: subtle }]}>{t('settings.categoriesLinkSubtitle')}</Text>
+
+        <View style={[styles.periodTrack, { borderColor: border }]}>
+          {BUDGET_PERIODS.map((period) => {
+            const active = budgetPeriod === period;
+            return (
+              <Pressable
+                key={period}
+                style={[styles.periodSegment, active && { backgroundColor: accentSoft }]}
+                onPress={() => handleChangePeriod(period)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}>
+                <Text style={[styles.periodSegmentText, { color: active ? accent : subtle }]} numberOfLines={1}>
+                  {t(`budget.period.${period}`)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[styles.subtitle, { color: subtle, marginTop: 8 }]}>{t('budget.periodHint')}</Text>
 
         <Pressable style={styles.suggestRow} onPress={handleSuggestBudget} disabled={suggesting}>
           {suggesting ? (
@@ -312,6 +348,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 16,
+  },
+  periodTrack: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 3,
+    marginTop: 14,
+  },
+  periodSegment: {
+    flex: 1,
+    borderRadius: 9,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  periodSegmentText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   suggestRow: {
     flexDirection: 'row',

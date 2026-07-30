@@ -4,10 +4,10 @@ import {
   getAverageWeeklyIncome,
   getBalanceBetween,
   getThisWeekBalance,
-  getWeeklySpendByCategory,
+  getPeriodSpendByCategory,
   setWeeklyBudget,
 } from '../storage';
-import { suggestWeeklyBudget } from '../budget';
+import { suggestBudget } from '../budget';
 import { buildHeatGrid } from '../heatmap';
 import { getDailySpendSeries, getMonthlySpendSeries, getWeeklySpendSeries } from '../trends';
 import { detectRecurringExpenses } from '../recurring';
@@ -47,7 +47,7 @@ describe('income never counts as spending', () => {
     await addTransaction({ amount: 30, category: 'food', type: 'expense' });
     await addTransaction({ amount: 5000, category: 'salary', type: 'income' });
 
-    const totals = await getWeeklySpendByCategory();
+    const totals = await getPeriodSpendByCategory();
 
     expect(totals.food).toBe(30);
     expect(totals.salary ?? 0).toBe(0);
@@ -58,7 +58,7 @@ describe('income never counts as spending', () => {
     const recent = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
     const list = [tx(recent, 40, 'food', 'expense'), tx(recent, 9000, 'food', 'income')];
 
-    const suggestion = suggestWeeklyBudget(list, ['food'], 8);
+    const suggestion = suggestBudget(list, ['food'], 'week', 8);
 
     // Only the 40 expense may drive the limit; 9000 of income must be ignored.
     expect(suggestion.food).toBeLessThan(100);

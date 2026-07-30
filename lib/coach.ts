@@ -15,8 +15,9 @@ import { CurrencyCode, Transaction, Category } from './types';
 import {
   getActiveProvider,
   getTransactions,
+  getBudgetPeriod,
   getWeeklyBudget,
-  getWeeklySpendByCategory,
+  getPeriodSpendByCategory,
   getGoals,
   getUserName,
   getCurrency,
@@ -32,7 +33,7 @@ async function buildProfileContext(): Promise<{ text: string; currency: Currency
     getUserName(),
     getGoals(),
     getWeeklyBudget(),
-    getWeeklySpendByCategory(),
+    getPeriodSpendByCategory(),
     getCurrency(),
     getCustomCategories(),
   ]);
@@ -53,7 +54,10 @@ async function buildProfileContext(): Promise<{ text: string; currency: Currency
       })
     );
   }
-  lines.push(await t('ai.budgetIntro'));
+  // The period must reach the model: telling it "weekly limit" while the user budgets monthly
+  // would have it reason about the wrong horizon and give advice that is simply wrong.
+  const budgetPeriod = await getBudgetPeriod();
+  lines.push(await t('ai.budgetIntro', { period: await t(`budget.periodPer.${budgetPeriod}`) }));
   for (const cat of Object.keys(budget) as Category[]) {
     const spent = weekSpend[cat] ?? 0;
     const limit = budget[cat];

@@ -1,4 +1,4 @@
-import { buildCategoryBreakdown, suggestWeeklyBudget, sumOverKeys } from '../budget';
+import { buildCategoryBreakdown, suggestBudget, sumOverKeys } from '../budget';
 import { Transaction } from '../types';
 
 function tx(createdAt: string, amount: number, category: string): Transaction {
@@ -51,12 +51,12 @@ describe('buildCategoryBreakdown', () => {
   });
 });
 
-describe('suggestWeeklyBudget', () => {
+describe('suggestBudget', () => {
   it('averages spend over the weeks actually covered by history, not the full lookback window', () => {
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-    const suggestion = suggestWeeklyBudget([tx(twoWeeksAgo.toISOString(), 100, 'food')], ['food'], 8);
+    const suggestion = suggestBudget([tx(twoWeeksAgo.toISOString(), 100, 'food')], ['food'], 'week', 8);
 
     // 100 spent over ~2 covered weeks -> 50/week.
     expect(suggestion.food).toBe(50);
@@ -66,19 +66,19 @@ describe('suggestWeeklyBudget', () => {
     const longAgo = new Date();
     longAgo.setDate(longAgo.getDate() - 200);
 
-    const suggestion = suggestWeeklyBudget([tx(longAgo.toISOString(), 999, 'food')], ['food'], 8);
+    const suggestion = suggestBudget([tx(longAgo.toISOString(), 999, 'food')], ['food'], 'week', 8);
 
     expect(suggestion.food).toBe(0);
   });
 
   it('ignores transactions for categories not in the requested set', () => {
-    const suggestion = suggestWeeklyBudget([tx(new Date().toISOString(), 500, 'other-thing')], ['food'], 8);
+    const suggestion = suggestBudget([tx(new Date().toISOString(), 500, 'other-thing')], ['food'], 'week', 8);
 
     expect(suggestion.food).toBe(0);
     expect(suggestion['other-thing']).toBeUndefined();
   });
 
   it('returns 0 for every category when there are no transactions', () => {
-    expect(suggestWeeklyBudget([], ['food', 'cafe'], 8)).toEqual({ food: 0, cafe: 0 });
+    expect(suggestBudget([], ['food', 'cafe'], 'week', 8)).toEqual({ food: 0, cafe: 0 });
   });
 });

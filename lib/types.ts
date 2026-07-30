@@ -119,7 +119,15 @@ export interface Goal {
   savedAmount: number;
 }
 
+/**
+ * Category limits. The numbers are "per budget period" - the same stored values mean per-week
+ * or per-month depending on BudgetPeriod, so switching period does not rewrite anyone's limits.
+ */
 export type WeeklyBudget = Record<string, number>;
+
+export type BudgetPeriod = 'week' | 'month';
+
+export const BUDGET_PERIODS: BudgetPeriod[] = ['week', 'month'];
 
 export interface Achievement {
   id: string;

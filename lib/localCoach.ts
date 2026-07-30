@@ -3,8 +3,9 @@ import { resolveCategoryLabelAsync } from './categories';
 import { Transaction, expensesOnly } from './types';
 import {
   getTransactions,
+  getBudgetPeriod,
   getWeeklyBudget,
-  getWeeklySpendByCategory,
+  getPeriodSpendByCategory,
   getWeekWindow,
   getGoals,
   getCurrency,
@@ -17,6 +18,12 @@ import { classifyIntent, parsePurchaseQuestion } from './nlu';
 
 async function weekdayLabels(): Promise<string[]> {
   return translateArrayAsync('heatmap.weekdays');
+}
+
+/** The word for the user's budget period, for sentences like "limit for the month". */
+async function periodLabel(): Promise<string> {
+  const period = await getBudgetPeriod();
+  return translateAsync(`budget.periodPer.${period}`);
 }
 
 async function daypartLabels(): Promise<string[]> {
@@ -35,7 +42,7 @@ interface TopCategory {
 async function getMostUsedCategory(): Promise<TopCategory | null> {
   const [budget, weekSpend, customCategories] = await Promise.all([
     getWeeklyBudget(),
-    getWeeklySpendByCategory(),
+    getPeriodSpendByCategory(),
     getCustomCategories(),
   ]);
 
@@ -89,12 +96,13 @@ export interface CoachDialogueState {
 export const EMPTY_DIALOGUE_STATE: CoachDialogueState = { amount: null, categoryId: null };
 
 async function buildPurchaseReply(amount: number, categoryId: string | null): Promise<string> {
-  const [currency, budget, weekSpend, customCategories, goal] = await Promise.all([
+  const [currency, budget, weekSpend, customCategories, goal, periodWord] = await Promise.all([
     getCurrency(),
     getWeeklyBudget(),
-    getWeeklySpendByCategory(),
+    getPeriodSpendByCategory(),
     getCustomCategories(),
     getPrimaryGoalFacts(),
+    periodLabel(),
   ]);
   const fmt = (n: number) => formatMoney(n, currency);
   const parts: string[] = [];
@@ -108,9 +116,9 @@ async function buildPurchaseReply(amount: number, categoryId: string | null): Pr
       await translateAsync('local.purchaseAdviceSpecific', { amount: fmt(amount), category: label, pct: pctAfter, limit: fmt(limit) })
     );
   } else {
-    const weeklyTotal = Object.values(budget).reduce((s, v) => s + v, 0);
-    const pct = weeklyTotal > 0 ? Math.round((amount / weeklyTotal) * 100) : 0;
-    parts.push(await translateAsync('local.purchaseAdviceAmountOnly', { amount: fmt(amount), pct }));
+    const periodTotal = Object.values(budget).reduce((s: number, v: number) => s + v, 0);
+    const pct = periodTotal > 0 ? Math.round((amount / periodTotal) * 100) : 0;
+    parts.push(await translateAsync('local.purchaseAdviceAmountOnly', { amount: fmt(amount), pct, period: periodWord }));
   }
 
   if (goal) {
@@ -118,14 +126,14 @@ async function buildPurchaseReply(amount: number, categoryId: string | null): Pr
     parts.push(await translateAsync('local.purchaseAdviceGoalImpact', { goalName: goal.name, pct }));
   }
 
-  parts.push(await translateAsync('local.purchaseAdviceRule'));
+  parts.push(await translateAsync('local.purchaseAdviceRule', { period: periodWord }));
   return parts.join(' ');
 }
 
 async function buildStatusReply(): Promise<string> {
-  const [currency, topCategory] = await Promise.all([getCurrency(), getMostUsedCategory()]);
+  const [currency, topCategory, periodWord] = await Promise.all([getCurrency(), getMostUsedCategory(), periodLabel()]);
   const fmt = (n: number) => formatMoney(n, currency);
-  const parts = [await translateAsync('local.statusIntro')];
+  const parts = [await translateAsync('local.statusIntro', { period: periodWord })];
   if (topCategory) {
     parts.push(
       await translateAsync('local.purchaseAdviceBudget', {
@@ -231,7 +239,7 @@ export async function getLocalSpendingNudge(tx: Transaction): Promise<string> {
   const [currency, budget, weekSpend, customCategories] = await Promise.all([
     getCurrency(),
     getWeeklyBudget(),
-    getWeeklySpendByCategory(),
+    getPeriodSpendByCategory(),
     getCustomCategories(),
   ]);
   const fmt = (n: number) => formatMoney(n, currency);
@@ -244,10 +252,17 @@ export async function getLocalSpendingNudge(tx: Transaction): Promise<string> {
   }
   const spent = weekSpend[tx.category] ?? 0;
   const pct = Math.round((spent / limit) * 100);
+  const periodWord = await periodLabel();
   if (spent >= limit) {
-    return translateAsync('local.nudgeOverBudget', { amount, pct, category: label });
+    return translateAsync('local.nudgeOverBudget', { amount, pct, category: label, period: periodWord });
   }
-  return translateAsync('local.nudgeWithinBudget', { amount, pct, category: label, remaining: fmt(limit - spent) });
+  return translateAsync('local.nudgeWithinBudget', {
+    amount,
+    pct,
+    category: label,
+    period: periodWord,
+    remaining: fmt(limit - spent),
+  });
 }
 
 export async function getLocalHotspotIntervention(): Promise<string> {

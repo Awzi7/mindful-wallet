@@ -1,4 +1,9 @@
-import { Transaction, isExpense } from './types';
+import { BudgetPeriod, Transaction, isExpense } from './types';
+
+/** Days in one budget period. A month is approximated at 30 days for averaging purposes. */
+export function periodLengthDays(period: BudgetPeriod): number {
+  return period === 'month' ? 30 : 7;
+}
 
 /** Sums a record's values, but only over the given key set (ignores any extra keys the record might carry). */
 export function sumOverKeys(record: Record<string, number>, keys: string[]): number {
@@ -6,19 +11,21 @@ export function sumOverKeys(record: Record<string, number>, keys: string[]): num
 }
 
 /**
- * Suggests a weekly limit per category from historical average weekly spend, looking back up
- * to `weeksToConsider` weeks. Averages over however much history actually exists within that
+ * Suggests a per-period limit per category from historical average spend, looking back up to
+ * `periodsToConsider` periods. Averages over however much history actually exists within that
  * window (not always the full window), so a user with only 2 weeks of data doesn't get limits
  * diluted by 6 weeks of assumed zero spend. Rounds to the nearest 5 for a tidier number.
  */
-export function suggestWeeklyBudget(
+export function suggestBudget(
   transactions: Transaction[],
   categoryIds: string[],
-  weeksToConsider = 8
+  period: BudgetPeriod = 'week',
+  periodsToConsider = 8
 ): Record<string, number> {
+  const periodDays = periodLengthDays(period);
   const now = new Date();
   const windowStart = new Date(now);
-  windowStart.setDate(windowStart.getDate() - weeksToConsider * 7);
+  windowStart.setDate(windowStart.getDate() - periodsToConsider * periodDays);
 
   const idSet = new Set(categoryIds);
   const totals: Record<string, number> = {};
@@ -34,11 +41,11 @@ export function suggestWeeklyBudget(
   }
 
   const daysCovered = Math.max(1, (now.getTime() - oldestRelevantMs) / (1000 * 60 * 60 * 24));
-  const weeksCovered = Math.max(1, daysCovered / 7);
+  const periodsCovered = Math.max(1, daysCovered / periodDays);
 
   const suggestion: Record<string, number> = {};
   for (const id of categoryIds) {
-    suggestion[id] = Math.round(totals[id] / weeksCovered / 5) * 5;
+    suggestion[id] = Math.round(totals[id] / periodsCovered / 5) * 5;
   }
   return suggestion;
 }
